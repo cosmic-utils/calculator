@@ -1,10 +1,10 @@
 [Desktop Entry]
-Name=COSMIC App Template
-Exec=cosmic-app-template %F
+Name=Calculator
+Exec=cosmic-ext-calculator %F
 Terminal=false
 Type=Application
 StartupNotify=true
-Icon=com.example.CosmicAppTemplate
+Icon=dev.edfloreshz.Calculator
 Categories=COSMIC;Utility;
 Keywords=Folder;Manager;
 MimeType=inode/directory;

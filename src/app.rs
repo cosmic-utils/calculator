@@ -1,46 +1,145 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
 use std::collections::HashMap;
+use std::fmt::Display;
 
 use crate::fl;
 use cosmic::app::{Command, Core};
 use cosmic::iced::alignment::{Horizontal, Vertical};
 use cosmic::iced::{Alignment, Length};
-use cosmic::widget::{self, icon, menu, nav_bar};
+use cosmic::widget::{self, menu};
 use cosmic::{cosmic_theme, theme, Application, ApplicationExt, Apply, Element};
 
-const REPOSITORY: &str = "https://github.com/edfloreshz/cosmic-app-template";
+const REPOSITORY: &str = "https://github.com/edfloreshz/cosmic-ext-calculator";
 
-/// This is the struct that represents your application.
-/// It is used to define the data that will be used by your application.
-pub struct YourApp {
-    /// Application state which is managed by the COSMIC runtime.
+pub struct Calculator {
     core: Core,
-    /// Display a context drawer with the designated page if defined.
     context_page: ContextPage,
-    /// Key bindings for the application's menu bar.
     key_binds: HashMap<menu::KeyBind, MenuAction>,
-    /// A model that contains all of the pages assigned to the nav bar panel.
-    nav: nav_bar::Model,
+    calculation: Calculation,
 }
 
-/// This is the enum that contains all the possible variants that your application will need to transmit messages.
-/// This is used to communicate between the different parts of your application.
-/// If your application does not need to send messages, you can use an empty enum or `()`.
+#[derive(Debug)]
+pub struct Calculation {
+    pub expression: String,
+    pub operator: Option<Operator>,
+    pub result: f64,
+    pub previous_press_operator: bool,
+    pub equals_pressed: bool,
+}
+
+impl Calculation {
+    pub fn new() -> Self {
+        Self {
+            expression: String::new(),
+            operator: None,
+            result: 0.0,
+            previous_press_operator: false,
+            equals_pressed: false,
+        }
+    }
+
+    pub fn reset(&mut self) {
+        self.result = 0.0;
+        self.expression.clear();
+        self.operator = None;
+        self.equals_pressed = false;
+        self.previous_press_operator = false;
+    }
+
+    pub fn on_number_press(&mut self, number: i8) {
+        if self.previous_press_operator {
+            self.expression.clear();
+            self.previous_press_operator = false;
+        }
+        if self.equals_pressed {
+            self.reset();
+        }
+        self.expression.push_str(&number.to_string());
+    }
+
+    pub fn on_operator_press(&mut self, operator: Operator) {
+        if self.equals_pressed {
+            self.reset();
+        }
+        match operator {
+            Operator::Clear => {
+                self.reset();
+            }
+            Operator::Point => {
+                self.expression.push_str(".");
+            }
+            _ => {
+                self.on_equals_press();
+            }
+        }
+        self.operator = Some(operator);
+        self.previous_press_operator = true;
+    }
+
+    pub fn on_equals_press(&mut self) {
+        if self.result == 0.0 {
+            if let Ok(r) = self.expression.parse::<f64>() {
+                self.result = r;
+            };
+            return;
+        }
+
+        if let Some(operator) = &self.operator {
+            let result = match operator {
+                Operator::Add => self.result + self.expression.parse::<f64>().unwrap(),
+                Operator::Subtract => self.result - self.expression.parse::<f64>().unwrap(),
+                Operator::Multiply => self.result * self.expression.parse::<f64>().unwrap(),
+                Operator::Divide => self.result / self.expression.parse::<f64>().unwrap(),
+                Operator::Modulus => self.result % self.expression.parse::<f64>().unwrap(),
+                _ => self.result,
+            };
+
+            self.result = result;
+            self.expression = self.result.to_string();
+            self.operator = None;
+            self.equals_pressed = true;
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub enum Message {
     LaunchUrl(String),
+    Number(i8),
+    Modifier(Operator),
     ToggleContextPage(ContextPage),
 }
 
-/// Identifies a page in the application.
-pub enum Page {
-    Page1,
-    Page2,
-    Page3,
+#[derive(Debug, Clone)]
+pub enum Operator {
+    Add,
+    Subtract,
+    Multiply,
+    Divide,
+    Modulus,
+    Point,
+    Equal,
+    Clear,
 }
 
-/// Identifies a context page to display in the context drawer.
+impl Display for Operator {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        let symbol = match self {
+            Self::Add => "+",
+            Self::Subtract => "-",
+            Self::Multiply => "×",
+            Self::Divide => "÷",
+            Self::Modulus => "%",
+            Self::Point => ".",
+            Self::Equal => "=",
+            Self::Clear => "C",
+        };
+
+        write!(f, "{}", symbol)
+    }
+}
+
 #[derive(Copy, Clone, Debug, Default, Eq, PartialEq)]
 pub enum ContextPage {
     #[default]
@@ -70,22 +169,14 @@ impl menu::action::MenuAction for MenuAction {
     }
 }
 
-/// Implement the `Application` trait for your application.
-/// This is where you define the behavior of your application.
-///
-/// The `Application` trait requires you to define the following types and constants:
-/// - `Executor` is the async executor that will be used to run your application's commands.
-/// - `Flags` is the data that your application needs to use before it starts.
-/// - `Message` is the enum that contains all the possible variants that your application will need to transmit messages.
-/// - `APP_ID` is the unique identifier of your application.
-impl Application for YourApp {
+impl Application for Calculator {
     type Executor = cosmic::executor::Default;
 
     type Flags = ();
 
     type Message = Message;
 
-    const APP_ID: &'static str = "com.example.CosmicAppTemplate";
+    const APP_ID: &'static str = "dev.edfloreshz.Calculator";
 
     fn core(&self) -> &Core {
         &self.core
@@ -95,50 +186,17 @@ impl Application for YourApp {
         &mut self.core
     }
 
-    /// Instructs the cosmic runtime to use this model as the nav bar model.
-    fn nav_model(&self) -> Option<&nav_bar::Model> {
-        Some(&self.nav)
-    }
-
-    /// This is the entry point of your application, it is where you initialize your application.
-    ///
-    /// Any work that needs to be done before the application starts should be done here.
-    ///
-    /// - `core` is used to passed on for you by libcosmic to use in the core of your own application.
-    /// - `flags` is used to pass in any data that your application needs to use before it starts.
-    /// - `Command` type is used to send messages to your application. `Command::none()` can be used to send no messages to your application.
     fn init(core: Core, _flags: Self::Flags) -> (Self, Command<Self::Message>) {
-        let mut nav = nav_bar::Model::default();
-
-        nav.insert()
-            .text("Page 1")
-            .data::<Page>(Page::Page1)
-            .icon(icon::from_name("applications-science-symbolic"))
-            .activate();
-
-        nav.insert()
-            .text("Page 2")
-            .data::<Page>(Page::Page2)
-            .icon(icon::from_name("applications-system-symbolic"));
-
-        nav.insert()
-            .text("Page 3")
-            .data::<Page>(Page::Page3)
-            .icon(icon::from_name("applications-games-symbolic"));
-
-        let mut app = YourApp {
+        let app = Calculator {
             core,
             context_page: ContextPage::default(),
             key_binds: HashMap::new(),
-            nav,
+            calculation: Calculation::new(),
         };
 
-        let command = app.update_titles();
-
-        (app, command)
+        (app, Command::none())
     }
 
-    /// Elements to pack at the start of the header bar.
     fn header_start(&self) -> Vec<Element<Self::Message>> {
         let menu_bar = menu::bar(vec![menu::Tree::with_children(
             menu::root(fl!("view")),
@@ -151,49 +209,77 @@ impl Application for YourApp {
         vec![menu_bar.into()]
     }
 
-    /// This is the main view of your application, it is the root of your widget tree.
-    ///
-    /// The `Element` type is used to represent the visual elements of your application,
-    /// it has a `Message` associated with it, which dictates what type of message it can send.
-    ///
-    /// To get a better sense of which widgets are available, check out the `widget` module.
     fn view(&self) -> Element<Self::Message> {
-        widget::text::title1(fl!("welcome"))
-            .apply(widget::container)
-            .width(Length::Fill)
-            .height(Length::Fill)
-            .align_x(Horizontal::Center)
-            .align_y(Vertical::Center)
-            .into()
+        widget::column::with_children(vec![
+            widget::text_input("", &self.calculation.expression)
+                .size(28.0)
+                .width(Length::Fill)
+                .into(),
+            widget::grid()
+                .column_spacing(16)
+                .row_spacing(16)
+                .push(Calculator::button("1", Message::Number(1)))
+                .push(Calculator::button("2", Message::Number(2)))
+                .push(Calculator::button("3", Message::Number(3)))
+                .push(Calculator::button("÷", Message::Modifier(Operator::Divide)))
+                .insert_row()
+                .push(Calculator::button("4", Message::Number(4)))
+                .push(Calculator::button("5", Message::Number(5)))
+                .push(Calculator::button("6", Message::Number(6)))
+                .push(Calculator::button(
+                    "×",
+                    Message::Modifier(Operator::Multiply),
+                ))
+                .insert_row()
+                .push(Calculator::button("7", Message::Number(7)))
+                .push(Calculator::button("8", Message::Number(8)))
+                .push(Calculator::button("9", Message::Number(9)))
+                .push(Calculator::button(
+                    "-",
+                    Message::Modifier(Operator::Subtract),
+                ))
+                .insert_row()
+                .push(Calculator::button("0", Message::Number(0)))
+                .push(Calculator::button(".", Message::Modifier(Operator::Point)))
+                .push(Calculator::button(
+                    "%",
+                    Message::Modifier(Operator::Modulus),
+                ))
+                .push(Calculator::button("+", Message::Modifier(Operator::Add)))
+                .insert_row()
+                .push(Calculator::button("C", Message::Modifier(Operator::Clear)))
+                .push(Calculator::button("=", Message::Modifier(Operator::Equal)))
+                .apply(widget::container)
+                .width(Length::Fill)
+                .height(Length::Fill)
+                .align_x(Horizontal::Center)
+                .align_y(Vertical::Center)
+                .into(),
+        ])
+        .into()
     }
 
-    /// Application messages are handled here. The application state can be modified based on
-    /// what message was received. Commands may be returned for asynchronous execution on a
-    /// background thread managed by the application's executor.
     fn update(&mut self, message: Self::Message) -> Command<Self::Message> {
         match message {
             Message::LaunchUrl(url) => {
                 let _result = open::that_detached(url);
             }
-
             Message::ToggleContextPage(context_page) => {
                 if self.context_page == context_page {
-                    // Close the context drawer if the toggled context page is the same.
                     self.core.window.show_context = !self.core.window.show_context;
                 } else {
-                    // Open the context drawer to display the requested context page.
                     self.context_page = context_page;
                     self.core.window.show_context = true;
                 }
 
-                // Set the title of the context drawer.
                 self.set_context_title(context_page.title());
             }
+            Message::Number(num) => self.calculation.on_number_press(num),
+            Message::Modifier(operator) => self.calculation.on_operator_press(operator),
         }
         Command::none()
     }
 
-    /// Display a context drawer if the context page is requested.
     fn context_drawer(&self) -> Option<Element<Self::Message>> {
         if !self.core.window.show_context {
             return None;
@@ -203,24 +289,15 @@ impl Application for YourApp {
             ContextPage::About => self.about(),
         })
     }
-
-    /// Called when a nav item is selected.
-    fn on_nav_select(&mut self, id: nav_bar::Id) -> Command<Self::Message> {
-        // Activate the page in the model.
-        self.nav.activate(id);
-
-        self.update_titles()
-    }
 }
 
-impl YourApp {
+impl Calculator {
     /// The about page for this app.
     pub fn about(&self) -> Element<Message> {
         let cosmic_theme::Spacing { space_xxs, .. } = theme::active().cosmic().spacing;
 
         let icon = widget::svg(widget::svg::Handle::from_memory(
-            &include_bytes!("../res/icons/hicolor/128x128/apps/com.example.CosmicAppTemplate.svg")
-                [..],
+            &include_bytes!("../res/icons/hicolor/scalable/apps/dev.edfloreshz.Calculator.svg")[..],
         ));
 
         let title = widget::text::title3(fl!("app-title"));
@@ -238,18 +315,15 @@ impl YourApp {
             .into()
     }
 
-    /// Updates the header and window titles.
-    pub fn update_titles(&mut self) -> Command<Message> {
-        let mut window_title = fl!("app-title");
-        let mut header_title = String::new();
-
-        if let Some(page) = self.nav.text(self.nav.active()) {
-            window_title.push_str(" — ");
-            window_title.push_str(page);
-            header_title.push_str(page);
-        }
-
-        self.set_header_title(header_title);
-        self.set_window_title(window_title)
+    pub fn button(label: &str, message: Message) -> Element<Message> {
+        widget::button(
+            widget::container(widget::text(label).size(20.0))
+                .center_x()
+                .center_y(),
+        )
+        .width(Length::Fixed(50.0))
+        .height(Length::Fixed(50.0))
+        .on_press(message)
+        .into()
     }
 }

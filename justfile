@@ -1,5 +1,5 @@
-name := 'cosmic-app-template'
-export APPID := 'com.example.CosmicAppTemplate'
+name := 'cosmic-ext-calculator'
+export APPID := 'dev.edfloreshz.Calculator'
 
 rootdir := ''
 prefix := '/usr'
@@ -81,7 +81,7 @@ flatpak:
     for size in `ls {{icons-src}}`; do \
         install -Dm0644 "{{icons-src}}/$size/apps/{{APPID}}.svg" "{{icons-dst}}/$size/apps/{{APPID}}.svg"; \
     done
-    
+
 debpkg: build-release
     cargo deb --no-build
 

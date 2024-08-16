@@ -1,5 +1,5 @@
 [package]
-name = "cosmic-app-template"
+name = "cosmic-ext-calculator"
 version = "0.1.0"
 edition = "2021"
 license = "GPL-3.0"
@@ -40,8 +40,20 @@ depends = "$auto"
 section = "utility"
 priority = "optional"
 assets = [
-    ["target/release/cosmic-app-template", "usr/bin/cosmic-app-template", "755"],
-    ["res/com.example.CosmicAppTemplate.metainfo.xml", "usr/share/metainfo/com.example.CosmicAppTemplate.metainfo.xml", "644"],
-    ["res/com.example.CosmicAppTemplate.desktop", "usr/share/applications/com.example.CosmicAppTemplate.desktop", "644"],
-#    ["res/icons/hicolor/", "usr/share/icons/hicolor/", "644"]
+    [
+        "target/release/cosmic-ext-calculator",
+        "usr/bin/cosmic-ext-calculator",
+        "755",
+    ],
+    [
+        "res/dev.edfloreshz.Calculator.metainfo.xml",
+        "usr/share/metainfo/dev.edfloreshz.Calculator.metainfo.xml",
+        "644",
+    ],
+    [
+        "res/dev.edfloreshz.Calculator.desktop",
+        "usr/share/applications/dev.edfloreshz.Calculator.desktop",
+        "644",
+    ],
+    #    ["res/icons/hicolor/", "usr/share/icons/hicolor/", "644"]
 ]
