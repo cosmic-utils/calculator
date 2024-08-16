@@ -39,35 +39,33 @@ impl Calculation {
         }
     }
 
-    pub fn reset(&mut self) {
-        self.result = 0.0;
-        self.expression.clear();
-        self.operator = None;
-        self.equals_pressed = false;
-        self.previous_press_operator = false;
-    }
-
     pub fn on_number_press(&mut self, number: i8) {
         if self.previous_press_operator {
             self.expression.clear();
             self.previous_press_operator = false;
         }
         if self.equals_pressed {
-            self.reset();
+            self.clear();
         }
         self.expression.push_str(&number.to_string());
     }
 
     pub fn on_operator_press(&mut self, operator: Operator) {
         if self.equals_pressed {
-            self.reset();
+            self.clear();
         }
         match operator {
             Operator::Clear => {
-                self.reset();
+                self.clear();
+            }
+            Operator::ClearEntry => {
+                self.clear_entry();
             }
             Operator::Point => {
                 self.expression.push_str(".");
+            }
+            Operator::Backspace => {
+                self.expression.pop();
             }
             _ => {
                 self.on_equals_press();
@@ -101,6 +99,18 @@ impl Calculation {
             self.equals_pressed = true;
         }
     }
+
+    pub fn clear(&mut self) {
+        self.result = 0.0;
+        self.expression.clear();
+        self.operator = None;
+        self.equals_pressed = false;
+        self.previous_press_operator = false;
+    }
+
+    fn clear_entry(&mut self) {
+        self.expression.clear();
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -121,6 +131,8 @@ pub enum Operator {
     Point,
     Equal,
     Clear,
+    ClearEntry,
+    Backspace,
 }
 
 impl Display for Operator {
@@ -134,6 +146,8 @@ impl Display for Operator {
             Self::Point => ".",
             Self::Equal => "=",
             Self::Clear => "C",
+            Self::ClearEntry => "CE",
+            Self::Backspace => "⌫",
         };
 
         write!(f, "{}", symbol)
@@ -218,36 +232,44 @@ impl Application for Calculator {
             widget::grid()
                 .column_spacing(16)
                 .row_spacing(16)
-                .push(Calculator::button("1", Message::Number(1)))
-                .push(Calculator::button("2", Message::Number(2)))
-                .push(Calculator::button("3", Message::Number(3)))
-                .push(Calculator::button("÷", Message::Modifier(Operator::Divide)))
-                .insert_row()
-                .push(Calculator::button("4", Message::Number(4)))
-                .push(Calculator::button("5", Message::Number(5)))
-                .push(Calculator::button("6", Message::Number(6)))
                 .push(Calculator::button(
-                    "×",
-                    Message::Modifier(Operator::Multiply),
+                    "CE",
+                    Message::Modifier(Operator::ClearEntry),
                 ))
+                .push(Calculator::button("C", Message::Modifier(Operator::Clear)))
+                .push(Calculator::button(
+                    "%",
+                    Message::Modifier(Operator::Modulus),
+                ))
+                .push(Calculator::button("÷", Message::Modifier(Operator::Divide)))
                 .insert_row()
                 .push(Calculator::button("7", Message::Number(7)))
                 .push(Calculator::button("8", Message::Number(8)))
                 .push(Calculator::button("9", Message::Number(9)))
                 .push(Calculator::button(
+                    "×",
+                    Message::Modifier(Operator::Multiply),
+                ))
+                .insert_row()
+                .push(Calculator::button("4", Message::Number(4)))
+                .push(Calculator::button("5", Message::Number(5)))
+                .push(Calculator::button("6", Message::Number(6)))
+                .push(Calculator::button(
                     "-",
                     Message::Modifier(Operator::Subtract),
                 ))
                 .insert_row()
+                .push(Calculator::button("1", Message::Number(1)))
+                .push(Calculator::button("2", Message::Number(2)))
+                .push(Calculator::button("3", Message::Number(3)))
+                .push(Calculator::button("+", Message::Modifier(Operator::Add)))
+                .insert_row()
                 .push(Calculator::button("0", Message::Number(0)))
                 .push(Calculator::button(".", Message::Modifier(Operator::Point)))
                 .push(Calculator::button(
-                    "%",
-                    Message::Modifier(Operator::Modulus),
+                    "⌫",
+                    Message::Modifier(Operator::Backspace),
                 ))
-                .push(Calculator::button("+", Message::Modifier(Operator::Add)))
-                .insert_row()
-                .push(Calculator::button("C", Message::Modifier(Operator::Clear)))
                 .push(Calculator::button("=", Message::Modifier(Operator::Equal)))
                 .apply(widget::container)
                 .width(Length::Fill)
