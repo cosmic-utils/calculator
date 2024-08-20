@@ -1,14 +1,26 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
+use std::any::TypeId;
 use std::collections::HashMap;
-use std::fmt::Display;
 
+use crate::calculation::Calculation;
+use crate::config;
+use crate::config::CONFIG_VERSION;
 use crate::fl;
-use cosmic::app::{Command, Core};
+use crate::operator::Operator;
+use cosmic::app::{self, Command, Core};
+use cosmic::cosmic_config::Update;
+use cosmic::cosmic_theme::ThemeMode;
 use cosmic::iced::alignment::{Horizontal, Vertical};
-use cosmic::iced::{Alignment, Length};
-use cosmic::widget::{self, menu};
-use cosmic::{cosmic_theme, theme, Application, ApplicationExt, Apply, Element};
+use cosmic::iced::{
+    event,
+    keyboard::Event as KeyEvent,
+    keyboard::{Key, Modifiers},
+    Alignment, Event, Length, Subscription,
+};
+use cosmic::widget::menu::Action;
+use cosmic::widget::{self, menu, nav_bar};
+use cosmic::{cosmic_config, cosmic_theme, theme, Application, ApplicationExt, Apply, Element};
 
 const REPOSITORY: &str = "https://github.com/edfloreshz/cosmic-ext-calculator";
 
@@ -16,142 +28,22 @@ pub struct Calculator {
     core: Core,
     context_page: ContextPage,
     key_binds: HashMap<menu::KeyBind, MenuAction>,
+    nav: nav_bar::Model,
+    modifiers: Modifiers,
+    config_handler: Option<cosmic_config::Config>,
+    config: config::CalculatorConfig,
     calculation: Calculation,
-}
-
-#[derive(Debug)]
-pub struct Calculation {
-    pub expression: String,
-    pub operator: Option<Operator>,
-    pub result: f64,
-    pub previous_press_operator: bool,
-    pub equals_pressed: bool,
-}
-
-impl Calculation {
-    pub fn new() -> Self {
-        Self {
-            expression: String::new(),
-            operator: None,
-            result: 0.0,
-            previous_press_operator: false,
-            equals_pressed: false,
-        }
-    }
-
-    pub fn on_number_press(&mut self, number: i8) {
-        if self.previous_press_operator {
-            self.expression.clear();
-            self.previous_press_operator = false;
-        }
-        if self.equals_pressed {
-            self.clear();
-        }
-        self.expression.push_str(&number.to_string());
-    }
-
-    pub fn on_operator_press(&mut self, operator: Operator) {
-        if self.equals_pressed {
-            self.clear();
-        }
-        match operator {
-            Operator::Clear => {
-                self.clear();
-            }
-            Operator::ClearEntry => {
-                self.clear_entry();
-            }
-            Operator::Point => {
-                self.expression.push_str(".");
-            }
-            Operator::Backspace => {
-                self.expression.pop();
-            }
-            _ => {
-                self.on_equals_press();
-            }
-        }
-        self.operator = Some(operator);
-        self.previous_press_operator = true;
-    }
-
-    pub fn on_equals_press(&mut self) {
-        if self.result == 0.0 {
-            if let Ok(r) = self.expression.parse::<f64>() {
-                self.result = r;
-            };
-            return;
-        }
-
-        if let Some(operator) = &self.operator {
-            let result = match operator {
-                Operator::Add => self.result + self.expression.parse::<f64>().unwrap(),
-                Operator::Subtract => self.result - self.expression.parse::<f64>().unwrap(),
-                Operator::Multiply => self.result * self.expression.parse::<f64>().unwrap(),
-                Operator::Divide => self.result / self.expression.parse::<f64>().unwrap(),
-                Operator::Modulus => self.result % self.expression.parse::<f64>().unwrap(),
-                _ => self.result,
-            };
-
-            self.result = result;
-            self.expression = self.result.to_string();
-            self.operator = None;
-            self.equals_pressed = true;
-        }
-    }
-
-    pub fn clear(&mut self) {
-        self.result = 0.0;
-        self.expression.clear();
-        self.operator = None;
-        self.equals_pressed = false;
-        self.previous_press_operator = false;
-    }
-
-    fn clear_entry(&mut self) {
-        self.expression.clear();
-    }
 }
 
 #[derive(Debug, Clone)]
 pub enum Message {
     LaunchUrl(String),
     Number(i8),
-    Modifier(Operator),
+    Operator(Operator),
     ToggleContextPage(ContextPage),
-}
-
-#[derive(Debug, Clone)]
-pub enum Operator {
-    Add,
-    Subtract,
-    Multiply,
-    Divide,
-    Modulus,
-    Point,
-    Equal,
-    Clear,
-    ClearEntry,
-    Backspace,
-}
-
-impl Display for Operator {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        let symbol = match self {
-            Self::Add => "+",
-            Self::Subtract => "-",
-            Self::Multiply => "×",
-            Self::Divide => "÷",
-            Self::Modulus => "%",
-            Self::Point => ".",
-            Self::Equal => "=",
-            Self::Clear => "C",
-            Self::ClearEntry => "CE",
-            Self::Backspace => "⌫",
-        };
-
-        write!(f, "{}", symbol)
-    }
+    Key(Modifiers, Key),
+    Modifiers(Modifiers),
+    SystemThemeModeChange,
 }
 
 #[derive(Copy, Clone, Debug, Default, Eq, PartialEq)]
@@ -166,6 +58,12 @@ impl ContextPage {
             Self::About => fl!("about"),
         }
     }
+}
+
+#[derive(Clone, Debug)]
+pub struct Flags {
+    pub config_handler: Option<cosmic_config::Config>,
+    pub config: config::CalculatorConfig,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -186,7 +84,7 @@ impl menu::action::MenuAction for MenuAction {
 impl Application for Calculator {
     type Executor = cosmic::executor::Default;
 
-    type Flags = ();
+    type Flags = Flags;
 
     type Message = Message;
 
@@ -200,11 +98,36 @@ impl Application for Calculator {
         &mut self.core
     }
 
-    fn init(core: Core, _flags: Self::Flags) -> (Self, Command<Self::Message>) {
+    fn nav_model(&self) -> Option<&nav_bar::Model> {
+        Some(&self.nav)
+    }
+
+    fn on_nav_select(&mut self, id: nav_bar::Id) -> Command<Self::Message> {
+        self.nav.activate(id);
+        self.nav
+            .active_data()
+            .map_or(Command::none(), |data: &Calculation| {
+                self.calculation.0 = data.1.to_string().clone();
+                self.calculation.1 = 0.0;
+                Command::none()
+            })
+    }
+
+    fn init(core: Core, flags: Self::Flags) -> (Self, Command<Self::Message>) {
+        let mut nav = nav_bar::Model::default();
+
+        for entry in &flags.config.history {
+            nav.insert().text(entry.0.clone()).data(entry.clone());
+        }
+
         let app = Calculator {
             core,
             context_page: ContextPage::default(),
             key_binds: HashMap::new(),
+            nav,
+            modifiers: Modifiers::empty(),
+            config_handler: flags.config_handler,
+            config: flags.config,
             calculation: Calculation::new(),
         };
 
@@ -225,52 +148,37 @@ impl Application for Calculator {
 
     fn view(&self) -> Element<Self::Message> {
         widget::column::with_children(vec![
-            widget::text_input("", &self.calculation.expression)
+            widget::text_input("", &self.calculation.0)
                 .size(28.0)
                 .width(Length::Fill)
                 .into(),
             widget::grid()
                 .column_spacing(16)
                 .row_spacing(16)
-                .push(Calculator::button(
-                    "CE",
-                    Message::Modifier(Operator::ClearEntry),
-                ))
-                .push(Calculator::button("C", Message::Modifier(Operator::Clear)))
-                .push(Calculator::button(
-                    "%",
-                    Message::Modifier(Operator::Modulus),
-                ))
-                .push(Calculator::button("÷", Message::Modifier(Operator::Divide)))
+                .push(button("CE", Message::Operator(Operator::ClearEntry)))
+                .push(button("C", Message::Operator(Operator::Clear)))
+                .push(button("%", Message::Operator(Operator::Modulus)))
+                .push(button("÷", Message::Operator(Operator::Divide)))
                 .insert_row()
-                .push(Calculator::button("7", Message::Number(7)))
-                .push(Calculator::button("8", Message::Number(8)))
-                .push(Calculator::button("9", Message::Number(9)))
-                .push(Calculator::button(
-                    "×",
-                    Message::Modifier(Operator::Multiply),
-                ))
+                .push(button("7", Message::Number(7)))
+                .push(button("8", Message::Number(8)))
+                .push(button("9", Message::Number(9)))
+                .push(button("×", Message::Operator(Operator::Multiply)))
                 .insert_row()
-                .push(Calculator::button("4", Message::Number(4)))
-                .push(Calculator::button("5", Message::Number(5)))
-                .push(Calculator::button("6", Message::Number(6)))
-                .push(Calculator::button(
-                    "-",
-                    Message::Modifier(Operator::Subtract),
-                ))
+                .push(button("4", Message::Number(4)))
+                .push(button("5", Message::Number(5)))
+                .push(button("6", Message::Number(6)))
+                .push(button("-", Message::Operator(Operator::Subtract)))
                 .insert_row()
-                .push(Calculator::button("1", Message::Number(1)))
-                .push(Calculator::button("2", Message::Number(2)))
-                .push(Calculator::button("3", Message::Number(3)))
-                .push(Calculator::button("+", Message::Modifier(Operator::Add)))
+                .push(button("1", Message::Number(1)))
+                .push(button("2", Message::Number(2)))
+                .push(button("3", Message::Number(3)))
+                .push(button("+", Message::Operator(Operator::Add)))
                 .insert_row()
-                .push(Calculator::button("0", Message::Number(0)))
-                .push(Calculator::button(".", Message::Modifier(Operator::Point)))
-                .push(Calculator::button(
-                    "⌫",
-                    Message::Modifier(Operator::Backspace),
-                ))
-                .push(Calculator::button("=", Message::Modifier(Operator::Equal)))
+                .push(button("0", Message::Number(0)))
+                .push(button(".", Message::Operator(Operator::Point)))
+                .push(button("⌫", Message::Operator(Operator::Backspace)))
+                .push(button("=", Message::Operator(Operator::Equal)))
                 .apply(widget::container)
                 .width(Length::Fill)
                 .height(Length::Fill)
@@ -282,6 +190,33 @@ impl Application for Calculator {
     }
 
     fn update(&mut self, message: Self::Message) -> Command<Self::Message> {
+        // Helper for updating config values efficiently
+        macro_rules! config_set {
+            ($name: ident, $value: expr) => {
+                match &self.config_handler {
+                    Some(config_handler) => {
+                        match paste::paste! { self.config.[<set_ $name>](config_handler, $value) } {
+                            Ok(_) => {}
+                            Err(err) => {
+                                log::warn!(
+                                    "failed to save config {:?}: {}",
+                                    stringify!($name),
+                                    err
+                                );
+                            }
+                        }
+                    }
+                    None => {
+                        self.config.$name = $value;
+                        log::warn!(
+                            "failed to save config {:?}: no config handler",
+                            stringify!($name)
+                        );
+                    }
+                }
+            };
+        }
+
         match message {
             Message::LaunchUrl(url) => {
                 let _result = open::that_detached(url);
@@ -297,7 +232,32 @@ impl Application for Calculator {
                 self.set_context_title(context_page.title());
             }
             Message::Number(num) => self.calculation.on_number_press(num),
-            Message::Modifier(operator) => self.calculation.on_operator_press(operator),
+            Message::Operator(operator) => {
+                self.calculation.on_operator_press(&operator);
+                if operator == Operator::Equal {
+                    let mut history = self.config.history.clone();
+                    history.push(self.calculation.clone());
+                    config_set!(history, history);
+                    self.nav
+                        .insert()
+                        .text(self.calculation.0.clone())
+                        .data(self.calculation.clone());
+                    self.calculation.0 = self.calculation.1.to_string();
+                }
+            }
+            Message::Key(modifiers, key) => {
+                for (key_bind, action) in &self.key_binds {
+                    if key_bind.matches(modifiers, &key) {
+                        return self.update(action.message());
+                    }
+                }
+            }
+            Message::Modifiers(modifiers) => {
+                self.modifiers = modifiers;
+            }
+            Message::SystemThemeModeChange => {
+                return self.update_config();
+            }
         }
         Command::none()
     }
@@ -310,6 +270,56 @@ impl Application for Calculator {
         Some(match self.context_page {
             ContextPage::About => self.about(),
         })
+    }
+
+    fn subscription(&self) -> Subscription<Self::Message> {
+        struct ConfigSubscription;
+        struct ThemeSubscription;
+
+        let subscriptions = vec![
+            event::listen_with(|event, status| match event {
+                Event::Keyboard(KeyEvent::KeyPressed { key, modifiers, .. }) => match status {
+                    event::Status::Ignored => Some(Message::Key(modifiers, key)),
+                    event::Status::Captured => None,
+                },
+                Event::Keyboard(KeyEvent::ModifiersChanged(modifiers)) => {
+                    Some(Message::Modifiers(modifiers))
+                }
+                _ => None,
+            }),
+            cosmic_config::config_subscription(
+                TypeId::of::<ConfigSubscription>(),
+                Self::APP_ID.into(),
+                CONFIG_VERSION,
+            )
+            .map(|update: Update<ThemeMode>| {
+                if !update.errors.is_empty() {
+                    log::info!(
+                        "errors loading config {:?}: {:?}",
+                        update.keys,
+                        update.errors
+                    );
+                }
+                Message::SystemThemeModeChange
+            }),
+            cosmic_config::config_subscription::<_, cosmic_theme::ThemeMode>(
+                TypeId::of::<ThemeSubscription>(),
+                cosmic_theme::THEME_MODE_ID.into(),
+                cosmic_theme::ThemeMode::version(),
+            )
+            .map(|update: Update<ThemeMode>| {
+                if !update.errors.is_empty() {
+                    log::info!(
+                        "errors loading theme mode {:?}: {:?}",
+                        update.keys,
+                        update.errors
+                    );
+                }
+                Message::SystemThemeModeChange
+            }),
+        ];
+
+        Subscription::batch(subscriptions)
     }
 }
 
@@ -337,15 +347,19 @@ impl Calculator {
             .into()
     }
 
-    pub fn button(label: &str, message: Message) -> Element<Message> {
-        widget::button(
-            widget::container(widget::text(label).size(20.0))
-                .center_x()
-                .center_y(),
-        )
-        .width(Length::Fixed(50.0))
-        .height(Length::Fixed(50.0))
-        .on_press(message)
-        .into()
+    fn update_config(&mut self) -> Command<Message> {
+        app::command::set_theme(self.config.app_theme.theme())
     }
+}
+
+pub fn button(label: &str, message: Message) -> Element<Message> {
+    widget::button(
+        widget::container(widget::text(label).size(20.0))
+            .center_x()
+            .center_y(),
+    )
+    .width(Length::Fixed(50.0))
+    .height(Length::Fixed(50.0))
+    .on_press(message)
+    .into()
 }

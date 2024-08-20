@@ -2,7 +2,7 @@
 
 use i18n_embed::{
     fluent::{fluent_language_loader, FluentLanguageLoader},
-    LanguageLoader,
+    DefaultLocalizer, LanguageLoader, Localizer,
 };
 use once_cell::sync::Lazy;
 use rust_embed::RustEmbed;
@@ -30,4 +30,18 @@ macro_rules! fl {
     ($message_id:literal, $($args:expr),*) => {{
         i18n_embed_fl::fl!($crate::core::localization::LANGUAGE_LOADER, $message_id, $($args), *)
     }};
+}
+
+// Get the `Localizer` to be used for localizing this library.
+pub fn localizer() -> Box<dyn Localizer> {
+    Box::from(DefaultLocalizer::new(&*LANGUAGE_LOADER, &Localizations))
+}
+
+pub fn set_localization() {
+    let localizer = localizer();
+    let requested_languages = i18n_embed::DesktopLanguageRequester::requested_languages();
+
+    if let Err(error) = localizer.select(&requested_languages) {
+        eprintln!("Error while loading language for App List {error}");
+    }
 }
