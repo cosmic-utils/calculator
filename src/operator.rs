@@ -14,8 +14,8 @@ pub enum Operator {
     Backspace,
 }
 
-impl From<&char> for Operator {
-    fn from(value: &char) -> Self {
+impl From<char> for Operator {
+    fn from(value: char) -> Self {
         match value {
             '+' => Self::Add,
             '-' => Self::Subtract,

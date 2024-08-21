@@ -152,6 +152,7 @@ impl Application for Calculator {
             .push(
                 widget::text_input("", &self.calculation.0)
                     .on_input(|input| Message::Input(input))
+                    .on_submit(Message::Operator(Operator::Equal))
                     .size(28.0)
                     .width(Length::Fill),
             )
