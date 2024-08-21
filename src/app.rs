@@ -211,7 +211,7 @@ impl Application for Calculator {
                             .height(Length::Fill)
                             .spacing(spacing.space_s),
                     )
-                    .max_width(500.0)
+                    .max_width(1000.0)
                     .width(Length::Fill)
                     .height(Length::Fill)
                     .align_items(Alignment::Center)
