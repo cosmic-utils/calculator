@@ -11,7 +11,6 @@ use crate::operator::Operator;
 use cosmic::app::{self, Command, Core};
 use cosmic::cosmic_config::Update;
 use cosmic::cosmic_theme::ThemeMode;
-use cosmic::iced::alignment::{Horizontal, Vertical};
 use cosmic::iced::{
     event,
     keyboard::Event as KeyEvent,
@@ -20,7 +19,7 @@ use cosmic::iced::{
 };
 use cosmic::widget::menu::Action;
 use cosmic::widget::{self, menu, nav_bar};
-use cosmic::{cosmic_config, cosmic_theme, theme, Application, ApplicationExt, Apply, Element};
+use cosmic::{cosmic_config, cosmic_theme, theme, Application, ApplicationExt, Element};
 
 const REPOSITORY: &str = "https://github.com/edfloreshz/cosmic-ext-calculator";
 
@@ -40,6 +39,7 @@ pub enum Message {
     LaunchUrl(String),
     Number(i8),
     Operator(Operator),
+    Input(String),
     ToggleContextPage(ContextPage),
     Key(Modifiers, Key),
     Modifiers(Modifiers),
@@ -147,46 +147,76 @@ impl Application for Calculator {
     }
 
     fn view(&self) -> Element<Self::Message> {
-        widget::column::with_children(vec![
-            widget::text_input("", &self.calculation.0)
-                .size(28.0)
-                .width(Length::Fill)
-                .into(),
-            widget::grid()
-                .column_spacing(16)
-                .row_spacing(16)
-                .push(button("CE", Message::Operator(Operator::ClearEntry)))
-                .push(button("C", Message::Operator(Operator::Clear)))
-                .push(button("%", Message::Operator(Operator::Modulus)))
-                .push(button("÷", Message::Operator(Operator::Divide)))
-                .insert_row()
-                .push(button("7", Message::Number(7)))
-                .push(button("8", Message::Number(8)))
-                .push(button("9", Message::Number(9)))
-                .push(button("×", Message::Operator(Operator::Multiply)))
-                .insert_row()
-                .push(button("4", Message::Number(4)))
-                .push(button("5", Message::Number(5)))
-                .push(button("6", Message::Number(6)))
-                .push(button("-", Message::Operator(Operator::Subtract)))
-                .insert_row()
-                .push(button("1", Message::Number(1)))
-                .push(button("2", Message::Number(2)))
-                .push(button("3", Message::Number(3)))
-                .push(button("+", Message::Operator(Operator::Add)))
-                .insert_row()
-                .push(button("0", Message::Number(0)))
-                .push(button(".", Message::Operator(Operator::Point)))
-                .push(button("⌫", Message::Operator(Operator::Backspace)))
-                .push(button("=", Message::Operator(Operator::Equal)))
-                .apply(widget::container)
-                .width(Length::Fill)
-                .height(Length::Fill)
-                .align_x(Horizontal::Center)
-                .align_y(Vertical::Center)
-                .into(),
-        ])
-        .into()
+        let spacing = cosmic::theme::active().cosmic().spacing;
+        widget::column::with_capacity(2)
+            .push(
+                widget::text_input("", &self.calculation.0)
+                    .on_input(|input| Message::Input(input))
+                    .size(28.0)
+                    .width(Length::Fill),
+            )
+            .push(
+                widget::column::with_capacity(1)
+                    .push(
+                        widget::row::with_capacity(4)
+                            .push(button("CE", Message::Operator(Operator::ClearEntry)))
+                            .push(button("C", Message::Operator(Operator::Clear)))
+                            .push(button("%", Message::Operator(Operator::Modulus)))
+                            .push(button("÷", Message::Operator(Operator::Divide)))
+                            .width(Length::Fill)
+                            .height(Length::Fill)
+                            .spacing(spacing.space_s),
+                    )
+                    .push(
+                        widget::row::with_capacity(4)
+                            .push(button("7", Message::Number(7)))
+                            .push(button("8", Message::Number(8)))
+                            .push(button("9", Message::Number(9)))
+                            .push(button("×", Message::Operator(Operator::Multiply)))
+                            .width(Length::Fill)
+                            .height(Length::Fill)
+                            .spacing(spacing.space_s),
+                    )
+                    .push(
+                        widget::row::with_capacity(4)
+                            .push(button("4", Message::Number(4)))
+                            .push(button("5", Message::Number(5)))
+                            .push(button("6", Message::Number(6)))
+                            .push(button("-", Message::Operator(Operator::Subtract)))
+                            .width(Length::Fill)
+                            .height(Length::Fill)
+                            .spacing(spacing.space_s),
+                    )
+                    .push(
+                        widget::row::with_capacity(4)
+                            .push(button("1", Message::Number(1)))
+                            .push(button("2", Message::Number(2)))
+                            .push(button("3", Message::Number(3)))
+                            .push(button("+", Message::Operator(Operator::Add)))
+                            .width(Length::Fill)
+                            .height(Length::Fill)
+                            .spacing(spacing.space_s),
+                    )
+                    .push(
+                        widget::row::with_capacity(4)
+                            .push(button("0", Message::Number(0)))
+                            .push(button(".", Message::Operator(Operator::Point)))
+                            .push(button("⌫", Message::Operator(Operator::Backspace)))
+                            .push(button("=", Message::Operator(Operator::Equal)))
+                            .width(Length::Fill)
+                            .height(Length::Fill)
+                            .spacing(spacing.space_s),
+                    )
+                    .max_width(500.0)
+                    .width(Length::Fill)
+                    .height(Length::Fill)
+                    .align_items(Alignment::Center)
+                    .spacing(spacing.space_s),
+            )
+            .align_items(Alignment::Center)
+            .spacing(spacing.space_s)
+            .padding(spacing.space_xxs)
+            .into()
     }
 
     fn update(&mut self, message: Self::Message) -> Command<Self::Message> {
@@ -232,6 +262,7 @@ impl Application for Calculator {
                 self.set_context_title(context_page.title());
             }
             Message::Number(num) => self.calculation.on_number_press(num),
+            Message::Input(input) => self.calculation.on_input(input),
             Message::Operator(operator) => {
                 self.calculation.on_operator_press(&operator);
                 if operator == Operator::Equal {
@@ -356,10 +387,12 @@ pub fn button(label: &str, message: Message) -> Element<Message> {
     widget::button(
         widget::container(widget::text(label).size(20.0))
             .center_x()
-            .center_y(),
+            .center_y()
+            .width(Length::Fill)
+            .height(Length::Fill),
     )
-    .width(Length::Fixed(50.0))
-    .height(Length::Fixed(50.0))
+    .width(Length::Fill)
+    .height(Length::Fill)
     .on_press(message)
     .into()
 }

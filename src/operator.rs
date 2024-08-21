@@ -14,6 +14,19 @@ pub enum Operator {
     Backspace,
 }
 
+impl From<&char> for Operator {
+    fn from(value: &char) -> Self {
+        match value {
+            '+' => Self::Add,
+            '-' => Self::Subtract,
+            '*' => Self::Multiply,
+            '÷' => Self::Divide,
+            '%' => Self::Modulus,
+            _ => panic!("Invalid operator"),
+        }
+    }
+}
+
 impl Display for Operator {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let symbol = match self {

@@ -57,4 +57,18 @@ impl Calculation {
     fn clear_entry(&mut self) {
         self.0.clear();
     }
+
+    pub(crate) fn on_input(&mut self, mut input: String) {
+        if let Some(c) = &input.pop() {
+            match c {
+                '0'..='9' => self.on_number_press(c.to_digit(10).unwrap() as i8),
+                '+' | '-' | '*' | '÷' | '%' => {
+                    self.on_operator_press(&Operator::from(c));
+                }
+                '.' => self.on_operator_press(&Operator::Point),
+                '\u{8}' => self.on_operator_press(&Operator::Backspace),
+                _ => {}
+            }
+        }
+    }
 }
