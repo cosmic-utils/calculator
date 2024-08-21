@@ -159,50 +159,50 @@ impl Application for Calculator {
                 widget::column::with_capacity(1)
                     .push(
                         widget::row::with_capacity(4)
-                            .push(button("CE", Message::Operator(Operator::ClearEntry)))
-                            .push(button("C", Message::Operator(Operator::Clear)))
-                            .push(button("%", Message::Operator(Operator::Modulus)))
-                            .push(button("÷", Message::Operator(Operator::Divide)))
+                            .push(image_button("CE", Message::Operator(Operator::ClearEntry)))
+                            .push(image_button("C", Message::Operator(Operator::Clear)))
+                            .push(image_button("%", Message::Operator(Operator::Modulus)))
+                            .push(suggested_button("÷", Message::Operator(Operator::Divide)))
                             .width(Length::Fill)
                             .height(Length::Fill)
                             .spacing(spacing.space_s),
                     )
                     .push(
                         widget::row::with_capacity(4)
-                            .push(button("7", Message::Number(7)))
-                            .push(button("8", Message::Number(8)))
-                            .push(button("9", Message::Number(9)))
-                            .push(button("×", Message::Operator(Operator::Multiply)))
+                            .push(standard_button("7", Message::Number(7)))
+                            .push(standard_button("8", Message::Number(8)))
+                            .push(standard_button("9", Message::Number(9)))
+                            .push(suggested_button("×", Message::Operator(Operator::Multiply)))
                             .width(Length::Fill)
                             .height(Length::Fill)
                             .spacing(spacing.space_s),
                     )
                     .push(
                         widget::row::with_capacity(4)
-                            .push(button("4", Message::Number(4)))
-                            .push(button("5", Message::Number(5)))
-                            .push(button("6", Message::Number(6)))
-                            .push(button("-", Message::Operator(Operator::Subtract)))
+                            .push(standard_button("4", Message::Number(4)))
+                            .push(standard_button("5", Message::Number(5)))
+                            .push(standard_button("6", Message::Number(6)))
+                            .push(suggested_button("-", Message::Operator(Operator::Subtract)))
                             .width(Length::Fill)
                             .height(Length::Fill)
                             .spacing(spacing.space_s),
                     )
                     .push(
                         widget::row::with_capacity(4)
-                            .push(button("1", Message::Number(1)))
-                            .push(button("2", Message::Number(2)))
-                            .push(button("3", Message::Number(3)))
-                            .push(button("+", Message::Operator(Operator::Add)))
+                            .push(standard_button("1", Message::Number(1)))
+                            .push(standard_button("2", Message::Number(2)))
+                            .push(standard_button("3", Message::Number(3)))
+                            .push(suggested_button("+", Message::Operator(Operator::Add)))
                             .width(Length::Fill)
                             .height(Length::Fill)
                             .spacing(spacing.space_s),
                     )
                     .push(
                         widget::row::with_capacity(4)
-                            .push(button("0", Message::Number(0)))
-                            .push(button(".", Message::Operator(Operator::Point)))
-                            .push(button("⌫", Message::Operator(Operator::Backspace)))
-                            .push(button("=", Message::Operator(Operator::Equal)))
+                            .push(standard_button("0", Message::Number(0)))
+                            .push(standard_button(".", Message::Operator(Operator::Point)))
+                            .push(standard_button("⌫", Message::Operator(Operator::Backspace)))
+                            .push(suggested_button("=", Message::Operator(Operator::Equal)))
                             .width(Length::Fill)
                             .height(Length::Fill)
                             .spacing(spacing.space_s),
@@ -383,7 +383,19 @@ impl Calculator {
     }
 }
 
-pub fn button(label: &str, message: Message) -> Element<Message> {
+pub fn standard_button(label: &str, message: Message) -> Element<Message> {
+    button(label, message, theme::Button::MenuItem)
+}
+
+pub fn suggested_button(label: &str, message: Message) -> Element<Message> {
+    button(label, message, theme::Button::Suggested)
+}
+
+pub fn image_button(label: &str, message: Message) -> Element<Message> {
+    button(label, message, theme::Button::Standard)
+}
+
+pub fn button(label: &str, message: Message, style: theme::Button) -> Element<Message> {
     widget::button(
         widget::container(widget::text(label).size(20.0))
             .center_x()
@@ -391,6 +403,7 @@ pub fn button(label: &str, message: Message) -> Element<Message> {
             .width(Length::Fill)
             .height(Length::Fill),
     )
+    .style(style)
     .width(Length::Fill)
     .height(Length::Fill)
     .on_press(message)
