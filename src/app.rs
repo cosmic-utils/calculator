@@ -160,9 +160,12 @@ impl Application for Calculator {
                 widget::column::with_capacity(1)
                     .push(
                         widget::row::with_capacity(4)
-                            .push(image_button("CE", Message::Operator(Operator::ClearEntry)))
-                            .push(image_button("C", Message::Operator(Operator::Clear)))
-                            .push(image_button("%", Message::Operator(Operator::Modulus)))
+                            .push(standard_button(
+                                "CE",
+                                Message::Operator(Operator::ClearEntry),
+                            ))
+                            .push(standard_button("C", Message::Operator(Operator::Clear)))
+                            .push(standard_button("%", Message::Operator(Operator::Modulus)))
                             .push(suggested_button("÷", Message::Operator(Operator::Divide)))
                             .width(Length::Fill)
                             .height(Length::Fill)
@@ -385,15 +388,11 @@ impl Calculator {
 }
 
 pub fn standard_button(label: &str, message: Message) -> Element<Message> {
-    button(label, message, theme::Button::MenuItem)
+    button(label, message, theme::Button::Standard)
 }
 
 pub fn suggested_button(label: &str, message: Message) -> Element<Message> {
     button(label, message, theme::Button::Suggested)
-}
-
-pub fn image_button(label: &str, message: Message) -> Element<Message> {
-    button(label, message, theme::Button::Standard)
 }
 
 pub fn button(label: &str, message: Message, style: theme::Button) -> Element<Message> {
