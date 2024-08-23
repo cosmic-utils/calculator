@@ -1,5 +1,3 @@
-use std::fmt::Display;
-
 #[derive(Debug, Clone, PartialEq)]
 pub enum Operator {
     Add,
@@ -10,13 +8,26 @@ pub enum Operator {
     Point,
     Equal,
     Clear,
-    ClearEntry,
     Backspace,
 }
 
-impl Display for Operator {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        let symbol = match self {
+impl Operator {
+    pub fn display(&self) -> &str {
+        match self {
+            Self::Add => "+",
+            Self::Subtract => "-",
+            Self::Multiply => "x",
+            Self::Divide => "÷",
+            Self::Modulus => "%",
+            Self::Point => ".",
+            Self::Equal => "=",
+            Self::Clear => "C",
+            Self::Backspace => "⌫",
+        }
+    }
+
+    pub fn expression(&self) -> &str {
+        match self {
             Self::Add => "+",
             Self::Subtract => "-",
             Self::Multiply => "*",
@@ -25,10 +36,7 @@ impl Display for Operator {
             Self::Point => ".",
             Self::Equal => "=",
             Self::Clear => "C",
-            Self::ClearEntry => "CE",
             Self::Backspace => "⌫",
-        };
-
-        write!(f, "{}", symbol)
+        }
     }
 }

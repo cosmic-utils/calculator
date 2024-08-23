@@ -36,5 +36,5 @@ pub fn get_flags() -> Flags {
 }
 
 pub fn set_logger() {
-    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("warn")).init();
+    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
 }

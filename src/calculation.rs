@@ -5,42 +5,52 @@ use std::fmt::Display;
 use crate::operator::Operator;
 
 #[derive(Debug, Clone, Default, PartialEq, Deserialize, Serialize)]
-pub struct Calculation(pub String, pub f64);
+pub struct Calculation {
+    pub display: String,
+    pub expression: String,
+    pub result: f64,
+}
 
 impl Display for Calculation {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{} = {}", self.0, self.1)
+        write!(f, "{} = {}", self.display, self.result)
     }
 }
 
 impl Calculation {
     pub fn new() -> Self {
-        Self(String::new(), 0.0)
+        Self::default()
     }
 
-    pub fn on_number_press(&mut self, number: i8) {
-        self.0.push_str(&number.to_string());
+    pub fn add_operator(&mut self, operator: Operator) {
+        self.expression.push_str(&operator.expression());
+        self.display.push_str(&operator.display());
+    }
+
+    pub fn on_number_press(&mut self, number: f32) {
+        self.display.push_str(&number.to_string());
+        self.expression.push_str(&format!("{:.1}", number));
     }
 
     pub fn on_operator_press(&mut self, operator: &Operator) {
         match operator {
-            Operator::Add => self.0.push_str(&Operator::Add.to_string()),
-            Operator::Subtract => self.0.push_str(&Operator::Subtract.to_string()),
-            Operator::Multiply => self.0.push_str(&Operator::Multiply.to_string()),
-            Operator::Divide => self.0.push_str(&Operator::Divide.to_string()),
-            Operator::Modulus => self.0.push_str(&Operator::Modulus.to_string()),
+            Operator::Add => self.add_operator(Operator::Add),
+            Operator::Subtract => self.add_operator(Operator::Subtract),
+            Operator::Multiply => self.add_operator(Operator::Multiply),
+            Operator::Divide => self.add_operator(Operator::Divide),
+            Operator::Modulus => self.add_operator(Operator::Modulus),
+            Operator::Point => self.add_operator(Operator::Point),
             Operator::Clear => self.clear(),
-            Operator::ClearEntry => self.clear_entry(),
-            Operator::Point => self.0.push_str("."),
-            Operator::Backspace => {
-                self.0.pop();
-            }
             Operator::Equal => self.on_equals_press(),
+            Operator::Backspace => {
+                self.expression.pop();
+            }
         }
     }
 
     pub fn on_equals_press(&mut self) {
-        self.1 = match self.0.calculate() {
+        let calculation = self.expression.calculate();
+        self.result = match calculation {
             Ok(value) => match value {
                 Value::Integer(v) => v as f64,
                 Value::Float(v) => v,
@@ -50,16 +60,12 @@ impl Calculation {
     }
 
     pub fn clear(&mut self) {
-        self.0.clear();
-        self.1 = 0.0;
-    }
-
-    fn clear_entry(&mut self) {
-        self.0.clear();
+        self.display.clear();
+        self.expression.clear();
+        self.result = 0.0;
     }
 
     pub(crate) fn on_input(&mut self, input: String) {
-        // Check if string matches '0'..='9' | '+' | '-' | '*' | '÷' | '%' | '.' | '\u{8}'
         if input.chars().all(|c| {
             c.is_digit(10)
                 || c == '+'
@@ -70,7 +76,7 @@ impl Calculation {
                 || c == '.'
                 || c == '\u{8}'
         }) {
-            self.0 = input;
+            self.expression = input;
         }
     }
 }
