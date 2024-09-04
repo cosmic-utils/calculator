@@ -122,7 +122,7 @@ impl Application for Calculator {
                 .data(entry.clone());
         }
 
-        let app = Calculator {
+        let mut app = Calculator {
             core,
             context_page: ContextPage::default(),
             key_binds: HashMap::new(),
@@ -133,7 +133,9 @@ impl Application for Calculator {
             calculation: Calculation::new(),
         };
 
-        (app, Command::none())
+        let set_window_title = app.set_window_title(fl!("app-title"));
+
+        (app, set_window_title)
     }
 
     fn header_start(&self) -> Vec<Element<Self::Message>> {
