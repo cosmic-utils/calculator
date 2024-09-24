@@ -21,7 +21,7 @@ use cosmic::widget::menu::Action;
 use cosmic::widget::{self, menu, nav_bar};
 use cosmic::{cosmic_config, cosmic_theme, theme, Application, ApplicationExt, Element};
 
-const REPOSITORY: &str = "https://github.com/edfloreshz/cosmic-ext-calculator";
+const REPOSITORY: &str = "https://github.com/cosmic-utils/calculator";
 
 pub struct Calculator {
     core: Core,
