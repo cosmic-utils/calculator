@@ -17,6 +17,10 @@
   <icon type="remote" height="256" width="256">https://raw.githubusercontent.com/edfloreshz/cosmic-ext-calculator/master/res/icons/hicolor/256x256/apps/dev.edfloreshz.Calculator.svg</icon>
   <screenshots>
   </screenshots>
+  <categories>
+    <category>Utility</category>
+    <category>COSMIC</category>
+  </categories>
   <provides>
     <mimetypes>
       <mimetype>text/plain</mimetype>
