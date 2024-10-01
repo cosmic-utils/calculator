@@ -8,7 +8,7 @@ use crate::config;
 use crate::config::CONFIG_VERSION;
 use crate::fl;
 use crate::operator::Operator;
-use cosmic::app::{self, Command, Core};
+use cosmic::app::{self, Command, Core, Message as CosmicMessage};
 use cosmic::cosmic_config::Update;
 use cosmic::cosmic_theme::ThemeMode;
 use cosmic::iced::{
@@ -20,7 +20,6 @@ use cosmic::iced::{
 use cosmic::widget::menu::Action;
 use cosmic::widget::{self, menu, nav_bar};
 use cosmic::{cosmic_config, cosmic_theme, theme, Application, ApplicationExt, Element};
-
 const REPOSITORY: &str = "https://github.com/cosmic-utils/calculator";
 
 pub struct Calculator {
@@ -44,6 +43,7 @@ pub enum Message {
     Key(Modifiers, Key),
     Modifiers(Modifiers),
     SystemThemeModeChange,
+    NavMenuAction(NavMenuAction),
 }
 
 #[derive(Copy, Clone, Debug, Default, Eq, PartialEq)]
@@ -78,6 +78,19 @@ impl menu::action::MenuAction for MenuAction {
         match self {
             MenuAction::About => Message::ToggleContextPage(ContextPage::About),
         }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum NavMenuAction {
+    Delete(nav_bar::Id),
+}
+
+impl menu::action::MenuAction for NavMenuAction {
+    type Message = cosmic::app::Message<Message>;
+
+    fn message(&self) -> Self::Message {
+        cosmic::app::Message::App(Message::NavMenuAction(*self))
     }
 }
 
@@ -149,6 +162,19 @@ impl Application for Calculator {
         )]);
 
         vec![menu_bar.into()]
+    }
+
+    fn nav_context_menu(
+        &self,
+        id: nav_bar::Id,
+    ) -> Option<Vec<menu::Tree<CosmicMessage<Self::Message>>>> {
+        Some(cosmic::widget::menu::items(
+            &HashMap::new(),
+            vec![cosmic::widget::menu::Item::Button(
+                fl!("delete"),
+                NavMenuAction::Delete(id),
+            )],
+        ))
     }
 
     fn view(&self) -> Element<Self::Message> {
@@ -300,6 +326,20 @@ impl Application for Calculator {
             Message::Modifiers(modifiers) => {
                 self.modifiers = modifiers;
             }
+            Message::NavMenuAction(action) => match action {
+                NavMenuAction::Delete(entity) => {
+                    if let Some(data) = self
+                        .nav
+                        .data::<Calculation>(entity)
+                        .map(|data| data.clone())
+                    {
+                        let mut history = self.config.history.clone();
+                        history.retain(|calc| calc != &data);
+                        config_set!(history, history);
+                        self.nav.remove(entity);
+                    }
+                }
+            },
             Message::SystemThemeModeChange => {
                 return self.update_config();
             }
