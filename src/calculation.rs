@@ -23,8 +23,8 @@ impl Calculation {
     }
 
     pub fn add_operator(&mut self, operator: Operator) {
-        self.expression.push_str(&operator.expression());
-        self.display.push_str(&operator.display());
+        self.expression.push_str(operator.expression());
+        self.display.push_str(operator.display());
     }
 
     pub fn on_number_press(&mut self, number: f32) {
@@ -67,7 +67,7 @@ impl Calculation {
 
     pub(crate) fn on_input(&mut self, input: String) {
         if input.chars().all(|c| {
-            c.is_digit(10)
+            c.is_ascii_digit()
                 || c == '+'
                 || c == '-'
                 || c == '*'

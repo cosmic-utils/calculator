@@ -109,6 +109,7 @@ impl Application for Calculator {
             .map_or(Command::none(), |data: &Calculation| {
                 self.calculation.expression = data.result.to_string().clone();
                 self.calculation.result = 0.0;
+                self.calculation.display = data.expression.to_string();
                 Command::none()
             })
     }
@@ -155,7 +156,7 @@ impl Application for Calculator {
         widget::column::with_capacity(2)
             .push(
                 widget::text_input("", &self.calculation.display)
-                    .on_input(|input| Message::Input(input))
+                    .on_input(Message::Input)
                     .on_submit(Message::Operator(Operator::Equal))
                     .size(32.0)
                     .width(Length::Fill),

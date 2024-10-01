@@ -36,5 +36,6 @@ pub fn get_flags() -> Flags {
 }
 
 pub fn set_logger() {
-    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
+    std::env::set_var("RUST_LOG", "cosmic_ext_calculator=info");
+    pretty_env_logger::init();
 }
