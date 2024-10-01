@@ -44,6 +44,7 @@ pub enum Message {
     Modifiers(Modifiers),
     SystemThemeModeChange,
     NavMenuAction(NavMenuAction),
+    CleanHistory,
 }
 
 #[derive(Copy, Clone, Debug, Default, Eq, PartialEq)]
@@ -69,6 +70,7 @@ pub struct Flags {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum MenuAction {
     About,
+    ClearHistory,
 }
 
 impl menu::action::MenuAction for MenuAction {
@@ -77,6 +79,7 @@ impl menu::action::MenuAction for MenuAction {
     fn message(&self) -> Self::Message {
         match self {
             MenuAction::About => Message::ToggleContextPage(ContextPage::About),
+            MenuAction::ClearHistory => Message::CleanHistory,
         }
     }
 }
@@ -157,7 +160,10 @@ impl Application for Calculator {
             menu::root(fl!("view")),
             menu::items(
                 &self.key_binds,
-                vec![menu::Item::Button(fl!("about"), MenuAction::About)],
+                vec![
+                    menu::Item::Button(fl!("clear-history"), MenuAction::ClearHistory),
+                    menu::Item::Button(fl!("about"), MenuAction::About),
+                ],
             ),
         )]);
 
@@ -342,6 +348,10 @@ impl Application for Calculator {
             },
             Message::SystemThemeModeChange => {
                 return self.update_config();
+            }
+            Message::CleanHistory => {
+                config_set!(history, vec![]);
+                self.nav.clear();
             }
         }
         Command::none()
