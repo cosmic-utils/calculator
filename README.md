@@ -11,8 +11,3 @@
 
 # History
 The calculator has an operations history, providing the ability to bring previous calculations back to the screen for further use or inspection.
-
-<div align="center">
-
-  ![window-dark.png](https://raw.githubusercontent.com/edfloreshz/cosmic-ext-calculator/main/res/screenshots/window-history.png)
-</div>
