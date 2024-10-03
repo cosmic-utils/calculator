@@ -47,11 +47,6 @@
         https://raw.githubusercontent.com/cosmic-utils/calculator/main/res/screenshots/window-dark.png</image>
       <caption>Dark mode</caption>
     </screenshot>
-    <screenshot>
-      <image>
-        https://raw.githubusercontent.com/cosmic-utils/calculator/main/res/screenshots/window-history.png</image>
-      <caption>History</caption>
-    </screenshot>
   </screenshots>
   <categories>
     <category>Utility</category>
