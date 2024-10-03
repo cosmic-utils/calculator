@@ -1,27 +1,41 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <component type="desktop-application">
   <id>dev.edfloreshz.Calculator</id>
+  <developer id="dev.edfloreshz">
+    <name>Eduardo Flores</name>
+  </developer>
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>GPL-3.0-only</project_license>
-  <project_group>COSMIC</project_group>
-  <developer id="dev.edfloreshz">
-    <name>edfloreshz</name>
-  </developer>
+  <content_rating type="oars-1.1" />
   <update_contact>edfloreshz@proton.me</update_contact>
   <url type="homepage">https://github.com/cosmic-utils/calculator</url>
-  <url type="bugtracker">https://github.com/cosmic-utils/calculator/issues</url>
-  <content_rating type="oars-1.1" />
+  <url type="bugtracker">https://github.com/cosmic-utils/calculator</url>
   <name>Calculator</name>
   <summary>Beyond the equation</summary>
   <description>
-    <p>A calculator app for the COSMIC desktop.</p>
+    <p>A calculator app with infinite possibilities</p>
+    <ul>
+        <li>Exceptional performance and responsiveness.</li>
+    </ul>
   </description>
   <branding>
     <color type="primary" scheme_preference="light">#efefef</color>
     <color type="primary" scheme_preference="dark">#232323</color>
   </branding>
-  <icon type="remote" height="256" width="256">https://raw.githubusercontent.com/edfloreshz/tasks/master/res/icons/hicolor/scalable/apps/dev.edfloreshz.Tasks.svg</icon>
+  <icon type="remote" height="256" width="256">https://raw.githubusercontent.com/cosmic-utils/calculator/main/res/icons/hicolor/scalable/apps/icon.svg</icon>
   <launchable type="desktop-id">dev.edfloreshz.Calculator.desktop</launchable>
+  <releases>
+    <release version="0.1.0" date="2024-10-03">
+        <description>
+            <p>Initial release! 🎉</p>
+            <ul>
+                <li>Make your calculations</li>
+                <li>Bring back previous equations</li>
+                <li>Rest your eyes with dark mode</li>
+            </ul>
+        </description>
+    </release>
+  </releases>
   <screenshots>
     <screenshot type="default">
       <image>
@@ -44,8 +58,6 @@
   </categories>
   <provides>
     <id>com.system76.CosmicApplication</id>
-    <binaries>
-      <binary>cosmic-ext-calculator</binary>
-    </binaries>
+    <binary>cosmic-ext-calculator</binary>
   </provides>
 </component>
