@@ -51,12 +51,12 @@ assets = [
         "755",
     ],
     [
-        "res/dev.edfloreshz.Calculator.metainfo.xml",
+        "res/metainfo.xml",
         "usr/share/metainfo/dev.edfloreshz.Calculator.metainfo.xml",
         "644",
     ],
     [
-        "res/dev.edfloreshz.Calculator.desktop",
+        "res/app.desktop",
         "usr/share/applications/dev.edfloreshz.Calculator.desktop",
         "644",
     ],
