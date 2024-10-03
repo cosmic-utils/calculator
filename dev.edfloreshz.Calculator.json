@@ -14,7 +14,7 @@
     "--socket=wayland",
     "--device=dri",
     "--talk-name=com.system76.CosmicSettingsDaemon",
-    "--filesystem=xdg-config/cosmic:rw"
+    "--filesystem=xdg-config/cosmic:ro"
   ],
   "build-options": {
     "append-path": "/usr/lib/sdk/rust-stable/bin:/usr/lib/sdk/llvm18/bin",
@@ -31,7 +31,7 @@
       "name": "calculator",
       "buildsystem": "simple",
       "build-commands": [
-        "cargo --offline build --release --verbose",
+        "cargo build --release --verbose",
         "install -Dm0755 ./target/release/cosmic-ext-calculator -t /app/bin/",
         "install -Dm644 ./res/icons/hicolor/scalable/apps/icon.svg /app/share/icons/hicolor/scalable/apps/dev.edfloreshz.Calculator.svg",
         "install -Dm644 ./res/metainfo.xml /app/share/metainfo/dev.edfloreshz.Calculator.metainfo.xml",
