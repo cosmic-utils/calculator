@@ -424,7 +424,7 @@ impl Calculator {
         let cosmic_theme::Spacing { space_xxs, .. } = theme::active().cosmic().spacing;
 
         let icon = widget::svg(widget::svg::Handle::from_memory(
-            &include_bytes!("../res/icons/hicolor/scalable/apps/dev.edfloreshz.Calculator.svg")[..],
+            &include_bytes!("../res/icons/hicolor/scalable/apps/icon.svg")[..],
         ));
 
         let title = widget::text::title3(fl!("app-title"));

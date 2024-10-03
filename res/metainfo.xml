@@ -12,16 +12,16 @@
   <url type="bugtracker">https://github.com/cosmic-utils/calculator/issues</url>
   <content_rating type="oars-1.1" />
   <name>Calculator</name>
-  <summary>A simple calculator app.</summary>
+  <summary>Beyond the equation</summary>
   <description>
     <p>A calculator app for the COSMIC desktop.</p>
   </description>
   <branding>
-    <color type="primary" scheme_preference="light">#eaeaff</color>
-    <color type="primary" scheme_preference="dark">#280c4b</color>
+    <color type="primary" scheme_preference="light">#efefef</color>
+    <color type="primary" scheme_preference="dark">#232323</color>
   </branding>
+  <icon type="remote" height="256" width="256">https://raw.githubusercontent.com/edfloreshz/tasks/master/res/icons/hicolor/scalable/apps/dev.edfloreshz.Tasks.svg</icon>
   <launchable type="desktop-id">dev.edfloreshz.Calculator.desktop</launchable>
-  <icon type="remote" height="256" width="256">https://raw.githubusercontent.com/cosmic-utils/calculator/master/res/icons/hicolor/scalable/apps/icon.svg</icon>
   <screenshots>
     <screenshot type="default">
       <image>
