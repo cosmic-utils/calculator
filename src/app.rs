@@ -490,7 +490,7 @@ pub fn button<'a>(
     style: theme::Button,
     width: Length,
 ) -> Element<'a, Message> {
-    widget::button(
+    widget::button::custom(
         widget::container(widget::text(label).size(20.0))
             .center_x()
             .center_y()
