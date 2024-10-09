@@ -9,7 +9,12 @@
   <content_rating type="oars-1.1" />
   <update_contact>edfloreshz@proton.me</update_contact>
   <url type="homepage">https://github.com/cosmic-utils/calculator</url>
-  <url type="bugtracker">https://github.com/cosmic-utils/calculator</url>
+  <url type="bugtracker">https://github.com/cosmic-utils/calculator/issues</url>
+  <url type="vcs-browser">https://github.com/cosmic-utils/calculator</url>
+  <url type="donation">https://ko-fi.com/edfloreshz</url>
+  <url type="contact">https://edfloreshz.dev</url>
+  <url type="contribute">https://github.com/cosmic-utils/calculator</url>
+  <url type="translate">https://github.com/cosmic-utils/calculator/tree/main/i18n</url>
   <name>Calculator</name>
   <summary>Beyond the equation</summary>
   <description>
@@ -51,6 +56,14 @@
   <categories>
     <category>Utility</category>
   </categories>
+  <requires>
+    <display_length compare="ge">360</display_length>
+    <internet>offline-only</internet>
+  </requires>
+  <supports>
+    <control>keyboard</control>
+    <control>pointing</control>
+  </supports>
   <provides>
     <id>com.system76.CosmicApplication</id>
     <binary>cosmic-ext-calculator</binary>
