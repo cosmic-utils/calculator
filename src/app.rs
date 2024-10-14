@@ -18,7 +18,7 @@ use cosmic::iced::{
     Alignment, Event, Length, Subscription,
 };
 use cosmic::widget::menu::Action;
-use cosmic::widget::{self, menu, nav_bar};
+use cosmic::widget::{self, menu, nav_bar, ToastId};
 use cosmic::{cosmic_config, cosmic_theme, theme, Application, ApplicationExt, Element};
 const REPOSITORY: &str = "https://github.com/cosmic-utils/calculator";
 
@@ -31,6 +31,7 @@ pub struct Calculator {
     config_handler: Option<cosmic_config::Config>,
     config: config::CalculatorConfig,
     calculation: Calculation,
+    toasts: widget::Toasts<Message>,
 }
 
 #[derive(Debug, Clone)]
@@ -45,6 +46,8 @@ pub enum Message {
     SystemThemeModeChange,
     NavMenuAction(NavMenuAction),
     CleanHistory,
+    ShowToast(String),
+    CloseToast(ToastId),
 }
 
 #[derive(Copy, Clone, Debug, Default, Eq, PartialEq)]
@@ -124,7 +127,7 @@ impl Application for Calculator {
             .active_data()
             .map_or(Command::none(), |data: &Calculation| {
                 self.calculation.expression = data.result.to_string().clone();
-                self.calculation.result = 0.0;
+                self.calculation.result = String::new();
                 self.calculation.display = data.expression.to_string();
                 Command::none()
             })
@@ -148,6 +151,7 @@ impl Application for Calculator {
             config_handler: flags.config_handler,
             config: flags.config,
             calculation: Calculation::new(),
+            toasts: widget::toaster::Toasts::new(Message::CloseToast),
         };
 
         let set_window_title = app.set_window_title(fl!("app-title"));
@@ -253,6 +257,10 @@ impl Application for Calculator {
                             .height(Length::Fill)
                             .spacing(spacing.space_xs),
                     )
+                    .push(widget::row::row().push(widget::toaster(
+                        &self.toasts,
+                        widget::horizontal_space(Length::Fill),
+                    )))
                     .max_width(1000.0)
                     .width(Length::Fill)
                     .height(Length::Fill)
@@ -266,6 +274,8 @@ impl Application for Calculator {
     }
 
     fn update(&mut self, message: Self::Message) -> Command<Self::Message> {
+        let mut commands = vec![];
+
         // Helper for updating config values efficiently
         macro_rules! config_set {
             ($name: ident, $value: expr) => {
@@ -294,6 +304,14 @@ impl Application for Calculator {
         }
 
         match message {
+            Message::ShowToast(message) => {
+                commands.push(
+                    self.toasts
+                        .push(widget::toaster::Toast::new(message))
+                        .map(cosmic::app::Message::App),
+                );
+            }
+            Message::CloseToast(id) => self.toasts.remove(id),
             Message::LaunchUrl(url) => {
                 let _result = open::that_detached(url);
             }
@@ -309,19 +327,24 @@ impl Application for Calculator {
             }
             Message::Number(num) => self.calculation.on_number_press(num),
             Message::Input(input) => self.calculation.on_input(input),
-            Message::Operator(operator) => {
-                self.calculation.on_operator_press(&operator);
-                if operator == Operator::Equal {
-                    let mut history = self.config.history.clone();
-                    history.push(self.calculation.clone());
-                    config_set!(history, history);
-                    self.nav
-                        .insert()
-                        .text(self.calculation.to_string())
-                        .data(self.calculation.clone());
-                    self.calculation.display = self.calculation.result.to_string();
+            Message::Operator(operator) => match self.calculation.on_operator_press(&operator) {
+                crate::calculation::Message::Continue => {
+                    if operator == Operator::Equal {
+                        let mut history = self.config.history.clone();
+                        history.push(self.calculation.clone());
+                        config_set!(history, history);
+                        self.nav
+                            .insert()
+                            .text(self.calculation.to_string())
+                            .data(self.calculation.clone());
+                        self.calculation.display = self.calculation.result.to_string();
+                    }
                 }
-            }
+                crate::calculation::Message::Error(message) => {
+                    let command = self.update(Message::ShowToast(message));
+                    commands.push(command);
+                }
+            },
             Message::Key(modifiers, key) => {
                 for (key_bind, action) in &self.key_binds {
                     if key_bind.matches(modifiers, &key) {
@@ -354,7 +377,7 @@ impl Application for Calculator {
                 self.nav.clear();
             }
         }
-        Command::none()
+        Command::batch(commands)
     }
 
     fn context_drawer(&self) -> Option<Element<Self::Message>> {

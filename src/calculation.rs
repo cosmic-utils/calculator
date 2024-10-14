@@ -1,6 +1,6 @@
 use calculator_rs::{Calculate, Value};
 use serde::{Deserialize, Serialize};
-use std::fmt::Display;
+use std::{error::Error, fmt::Display};
 
 use crate::operator::Operator;
 
@@ -8,13 +8,18 @@ use crate::operator::Operator;
 pub struct Calculation {
     pub display: String,
     pub expression: String,
-    pub result: f64,
+    pub result: String,
 }
 
 impl Display for Calculation {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{} = {}", self.display, self.result)
     }
+}
+
+pub enum Message {
+    Continue,
+    Error(String),
 }
 
 impl Calculation {
@@ -29,10 +34,10 @@ impl Calculation {
 
     pub fn on_number_press(&mut self, number: f32) {
         self.display.push_str(&number.to_string());
-        self.expression.push_str(&format!("{:.1}", number));
+        self.expression.push_str(&number.to_string());
     }
 
-    pub fn on_operator_press(&mut self, operator: &Operator) {
+    pub fn on_operator_press(&mut self, operator: &Operator) -> Message {
         match operator {
             Operator::Add => self.add_operator(Operator::Add),
             Operator::Subtract => self.add_operator(Operator::Subtract),
@@ -41,28 +46,32 @@ impl Calculation {
             Operator::Modulus => self.add_operator(Operator::Modulus),
             Operator::Point => self.add_operator(Operator::Point),
             Operator::Clear => self.clear(),
-            Operator::Equal => self.on_equals_press(),
+            Operator::Equal => {
+                if let Err(err) = self.on_equals_press() {
+                    log::error!("{err}");
+                    return Message::Error(err.to_string());
+                }
+            }
             Operator::Backspace => {
                 self.expression.pop();
             }
-        }
+        };
+        Message::Continue
     }
 
-    pub fn on_equals_press(&mut self) {
-        let calculation = self.expression.calculate();
-        self.result = match calculation {
-            Ok(value) => match value {
-                Value::Integer(v) => v as f64,
-                Value::Float(v) => v,
-            },
-            Err(_) => 0.0,
+    pub fn on_equals_press(&mut self) -> Result<(), Box<dyn Error>> {
+        log::info!("Expression -> {}", self.expression);
+        self.result = match self.expression.calculate()? {
+            Value::Integer(v) => v.to_string(),
+            Value::Float(v) => v.to_string(),
         };
+        Ok(())
     }
 
     pub fn clear(&mut self) {
         self.display.clear();
         self.expression.clear();
-        self.result = 0.0;
+        self.result = String::new();
     }
 
     pub(crate) fn on_input(&mut self, input: String) {
