@@ -8,7 +8,7 @@ use crate::config;
 use crate::config::CONFIG_VERSION;
 use crate::fl;
 use crate::operator::Operator;
-use cosmic::app::{self, Command, Core, Message as CosmicMessage};
+use cosmic::app::{self, Core, Message as CosmicMessage, Task};
 use cosmic::cosmic_config::Update;
 use cosmic::cosmic_theme::ThemeMode;
 use cosmic::iced::{
@@ -121,19 +121,19 @@ impl Application for Calculator {
         Some(&self.nav)
     }
 
-    fn on_nav_select(&mut self, id: nav_bar::Id) -> Command<Self::Message> {
+    fn on_nav_select(&mut self, id: nav_bar::Id) -> Task<Self::Message> {
         self.nav.activate(id);
         self.nav
             .active_data()
-            .map_or(Command::none(), |data: &Calculation| {
+            .map_or(Task::none(), |data: &Calculation| {
                 self.calculation.expression = data.result.to_string().clone();
                 self.calculation.result = String::new();
                 self.calculation.display = data.expression.to_string();
-                Command::none()
+                Task::none()
             })
     }
 
-    fn init(core: Core, flags: Self::Flags) -> (Self, Command<Self::Message>) {
+    fn init(core: Core, flags: Self::Flags) -> (Self, Task<Self::Message>) {
         let mut nav = nav_bar::Model::default();
 
         for entry in &flags.config.history {
@@ -257,23 +257,23 @@ impl Application for Calculator {
                             .height(Length::Fill)
                             .spacing(spacing.space_xs),
                     )
-                    .push(widget::row::row().push(widget::toaster(
-                        &self.toasts,
-                        widget::horizontal_space(Length::Fill),
-                    )))
+                    .push(
+                        widget::row::row()
+                            .push(widget::toaster(&self.toasts, widget::horizontal_space())),
+                    )
                     .max_width(1000.0)
                     .width(Length::Fill)
                     .height(Length::Fill)
-                    .align_items(Alignment::Center)
+                    .align_x(Alignment::Center)
                     .spacing(spacing.space_xs),
             )
-            .align_items(Alignment::Center)
+            .align_x(Alignment::Center)
             .spacing(spacing.space_s)
             .padding(spacing.space_xxs)
             .into()
     }
 
-    fn update(&mut self, message: Self::Message) -> Command<Self::Message> {
+    fn update(&mut self, message: Self::Message) -> Task<Self::Message> {
         let mut commands = vec![];
 
         // Helper for updating config values efficiently
@@ -357,11 +357,7 @@ impl Application for Calculator {
             }
             Message::NavMenuAction(action) => match action {
                 NavMenuAction::Delete(entity) => {
-                    if let Some(data) = self
-                        .nav
-                        .data::<Calculation>(entity)
-                        .map(|data| data.clone())
-                    {
+                    if let Some(data) = self.nav.data::<Calculation>(entity).cloned() {
                         let mut history = self.config.history.clone();
                         history.retain(|calc| calc != &data);
                         config_set!(history, history);
@@ -377,7 +373,7 @@ impl Application for Calculator {
                 self.nav.clear();
             }
         }
-        Command::batch(commands)
+        Task::batch(commands)
     }
 
     fn context_drawer(&self) -> Option<Element<Self::Message>> {
@@ -395,7 +391,7 @@ impl Application for Calculator {
         struct ThemeSubscription;
 
         let subscriptions = vec![
-            event::listen_with(|event, status| match event {
+            event::listen_with(|event, status, _id| match event {
                 Event::Keyboard(KeyEvent::KeyPressed { key, modifiers, .. }) => match status {
                     event::Status::Ignored => Some(Message::Key(modifiers, key)),
                     event::Status::Captured => None,
@@ -460,12 +456,12 @@ impl Calculator {
             .push(icon)
             .push(title)
             .push(link)
-            .align_items(Alignment::Center)
+            .align_x(Alignment::Center)
             .spacing(space_xxs)
             .into()
     }
 
-    fn update_config(&mut self) -> Command<Message> {
+    fn update_config(&mut self) -> Task<Message> {
         app::command::set_theme(self.config.app_theme.theme())
     }
 }
@@ -515,12 +511,11 @@ pub fn button<'a>(
 ) -> Element<'a, Message> {
     widget::button::custom(
         widget::container(widget::text(label).size(20.0))
-            .center_x()
-            .center_y()
+            .center(Length::Fill)
             .width(Length::Fill)
             .height(Length::Fill),
     )
-    .style(style)
+    .class(style)
     .width(width)
     .height(Length::Fill)
     .on_press(message)
