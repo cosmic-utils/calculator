@@ -154,9 +154,13 @@ impl Application for Calculator {
             toasts: widget::toaster::Toasts::new(Message::CloseToast),
         };
 
-        let set_window_title = app.set_window_title(fl!("app-title"));
+        let mut tasks = vec![];
 
-        (app, set_window_title)
+        if let Some(id) = app.core.main_window_id() {
+            tasks.push(app.set_window_title(fl!("app-title"), id));
+        }
+
+        (app, Task::batch(tasks))
     }
 
     fn header_start(&self) -> Vec<Element<Self::Message>> {
