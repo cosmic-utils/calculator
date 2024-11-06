@@ -209,6 +209,7 @@ impl Application for Calculator {
 
     fn view(&self) -> Element<Self::Message> {
         let spacing = cosmic::theme::active().cosmic().spacing;
+
         widget::column::with_capacity(2)
             .push(
                 widget::text_input("", &self.calculation.display)
@@ -221,58 +222,106 @@ impl Application for Calculator {
                 widget::column::with_capacity(5)
                     .push(
                         widget::row::with_capacity(3)
-                            .push(
-                                widget::row::with_capacity(1)
-                                    .push(wide_button(Message::Operator(Operator::Clear), 2)),
-                            )
-                            .push(
-                                widget::row::with_capacity(2)
-                                    .push(standard_button(Message::Operator(Operator::Modulus)))
-                                    .push(suggested_button(Message::Operator(Operator::Divide)))
-                                    .width(Length::Fill)
-                                    .height(Length::Fill)
-                                    .spacing(spacing.space_xs),
-                            )
+                            .push(wide_button(
+                                Message::Operator(Operator::Clear),
+                                Length::FillPortion(2),
+                            ))
+                            .push(standard_button(
+                                Message::Operator(Operator::Modulus),
+                                Length::FillPortion(1),
+                            ))
+                            .push(suggested_button(
+                                Message::Operator(Operator::Divide),
+                                Length::FillPortion(1),
+                            ))
                             .width(Length::Fill)
                             .height(Length::Fill)
                             .spacing(spacing.space_xs),
                     )
                     .push(
                         widget::row::with_capacity(4)
-                            .push(standard_button(Message::Number(7.0)))
-                            .push(standard_button(Message::Number(8.0)))
-                            .push(standard_button(Message::Number(9.0)))
-                            .push(suggested_button(Message::Operator(Operator::Multiply)))
+                            .push(standard_button(
+                                Message::Number(7.0),
+                                Length::FillPortion(1),
+                            ))
+                            .push(standard_button(
+                                Message::Number(8.0),
+                                Length::FillPortion(1),
+                            ))
+                            .push(standard_button(
+                                Message::Number(9.0),
+                                Length::FillPortion(1),
+                            ))
+                            .push(suggested_button(
+                                Message::Operator(Operator::Multiply),
+                                Length::FillPortion(1),
+                            ))
                             .width(Length::Fill)
                             .height(Length::Fill)
                             .spacing(spacing.space_xs),
                     )
                     .push(
                         widget::row::with_capacity(4)
-                            .push(standard_button(Message::Number(4.0)))
-                            .push(standard_button(Message::Number(5.0)))
-                            .push(standard_button(Message::Number(6.0)))
-                            .push(suggested_button(Message::Operator(Operator::Subtract)))
+                            .push(standard_button(
+                                Message::Number(4.0),
+                                Length::FillPortion(1),
+                            ))
+                            .push(standard_button(
+                                Message::Number(5.0),
+                                Length::FillPortion(1),
+                            ))
+                            .push(standard_button(
+                                Message::Number(6.0),
+                                Length::FillPortion(1),
+                            ))
+                            .push(suggested_button(
+                                Message::Operator(Operator::Subtract),
+                                Length::FillPortion(1),
+                            ))
                             .width(Length::Fill)
                             .height(Length::Fill)
                             .spacing(spacing.space_xs),
                     )
                     .push(
                         widget::row::with_capacity(4)
-                            .push(standard_button(Message::Number(1.0)))
-                            .push(standard_button(Message::Number(2.0)))
-                            .push(standard_button(Message::Number(3.0)))
-                            .push(suggested_button(Message::Operator(Operator::Add)))
+                            .push(standard_button(
+                                Message::Number(1.0),
+                                Length::FillPortion(1),
+                            ))
+                            .push(standard_button(
+                                Message::Number(2.0),
+                                Length::FillPortion(1),
+                            ))
+                            .push(standard_button(
+                                Message::Number(3.0),
+                                Length::FillPortion(1),
+                            ))
+                            .push(suggested_button(
+                                Message::Operator(Operator::Add),
+                                Length::FillPortion(1),
+                            ))
                             .width(Length::Fill)
                             .height(Length::Fill)
                             .spacing(spacing.space_xs),
                     )
                     .push(
                         widget::row::with_capacity(4)
-                            .push(standard_button(Message::Number(0.0)))
-                            .push(standard_button(Message::Operator(Operator::Point)))
-                            .push(standard_button(Message::Operator(Operator::Backspace)))
-                            .push(suggested_button(Message::Operator(Operator::Equal)))
+                            .push(standard_button(
+                                Message::Number(0.0),
+                                Length::FillPortion(1),
+                            ))
+                            .push(standard_button(
+                                Message::Operator(Operator::Point),
+                                Length::FillPortion(1),
+                            ))
+                            .push(standard_button(
+                                Message::Operator(Operator::Backspace),
+                                Length::FillPortion(1),
+                            ))
+                            .push(suggested_button(
+                                Message::Operator(Operator::Equal),
+                                Length::FillPortion(1),
+                            ))
                             .width(Length::Fill)
                             .height(Length::Fill)
                             .spacing(spacing.space_xs),
@@ -465,41 +514,31 @@ impl Calculator {
     }
 }
 
-pub fn wide_button<'a>(message: Message, portion: u16) -> Element<'a, Message> {
+pub fn wide_button<'a>(message: Message, width: Length) -> Element<'a, Message> {
     let label = match message.clone() {
         Message::Number(num) => num.to_string(),
         Message::Operator(operator) => operator.display().to_string(),
         _ => String::new(),
     };
-    button(
-        label,
-        message,
-        theme::Button::Standard,
-        Length::FillPortion(portion),
-    )
+    button(label, message, theme::Button::Standard, width)
 }
 
-pub fn standard_button<'a>(message: Message) -> Element<'a, Message> {
+pub fn standard_button<'a>(message: Message, width: Length) -> Element<'a, Message> {
     let label = match message.clone() {
         Message::Number(num) => num.to_string(),
         Message::Operator(operator) => operator.display().to_string(),
         _ => String::new(),
     };
-    button(label, message, theme::Button::Standard, Length::Fill)
+    button(label, message, theme::Button::Standard, width)
 }
 
-pub fn suggested_button<'a>(message: Message) -> Element<'a, Message> {
+pub fn suggested_button<'a>(message: Message, width: Length) -> Element<'a, Message> {
     let label = match &message {
         Message::Number(num) => num.to_string(),
         Message::Operator(operator) => operator.display().to_string(),
         _ => String::new(),
     };
-    button(
-        label.to_string(),
-        message,
-        theme::Button::Suggested,
-        Length::Fill,
-    )
+    button(label.to_string(), message, theme::Button::Suggested, width)
 }
 
 pub fn button<'a>(
