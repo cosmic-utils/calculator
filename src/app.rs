@@ -8,6 +8,7 @@ use crate::config;
 use crate::config::CONFIG_VERSION;
 use crate::fl;
 use crate::operator::Operator;
+use cosmic::app::about::About;
 use cosmic::app::{self, Core, Message as CosmicMessage, Task};
 use cosmic::cosmic_config::Update;
 use cosmic::cosmic_theme::ThemeMode;
@@ -20,10 +21,10 @@ use cosmic::iced::{
 use cosmic::widget::menu::Action;
 use cosmic::widget::{self, menu, nav_bar, ToastId};
 use cosmic::{cosmic_config, cosmic_theme, theme, Application, ApplicationExt, Element};
-const REPOSITORY: &str = "https://github.com/cosmic-utils/calculator";
 
 pub struct Calculator {
     core: Core,
+    about: About,
     context_page: ContextPage,
     key_binds: HashMap<menu::KeyBind, MenuAction>,
     nav: nav_bar::Model,
@@ -36,7 +37,6 @@ pub struct Calculator {
 
 #[derive(Debug, Clone)]
 pub enum Message {
-    LaunchUrl(String),
     Number(f32),
     Operator(Operator),
     Input(String),
@@ -48,6 +48,7 @@ pub enum Message {
     CleanHistory,
     ShowToast(String),
     CloseToast(ToastId),
+    Cosmic(cosmic::app::cosmic::Message),
 }
 
 #[derive(Copy, Clone, Debug, Default, Eq, PartialEq)]
@@ -142,8 +143,19 @@ impl Application for Calculator {
                 .data(entry.clone());
         }
 
+        let about = About::default()
+            .set_application_name(fl!("app-title"))
+            .set_application_icon(Self::APP_ID)
+            .set_developer_name("Eduardo Flores")
+            .set_license_type("GPL-3.0")
+            .set_version("0.1.0")
+            .set_support_url("https://github.com/cosmic-utils/calculator/issues")
+            .set_repository_url("https://github.com/cosmic-utils/calculator")
+            .set_developers([("Eduardo Flores".into(), "edfloreshz@proton.me".into())]);
+
         let mut app = Calculator {
             core,
+            about,
             context_page: ContextPage::default(),
             key_binds: HashMap::new(),
             nav,
@@ -161,6 +173,10 @@ impl Application for Calculator {
         }
 
         (app, Task::batch(tasks))
+    }
+
+    fn about(&self) -> Option<&About> {
+        Some(&self.about)
     }
 
     fn header_start(&self) -> Vec<Element<Self::Message>> {
@@ -308,6 +324,11 @@ impl Application for Calculator {
         }
 
         match message {
+            Message::Cosmic(message) => {
+                commands.push(cosmic::app::command::message(cosmic::app::message::cosmic(
+                    message,
+                )));
+            }
             Message::ShowToast(message) => {
                 commands.push(
                     self.toasts
@@ -316,9 +337,6 @@ impl Application for Calculator {
                 );
             }
             Message::CloseToast(id) => self.toasts.remove(id),
-            Message::LaunchUrl(url) => {
-                let _result = open::that_detached(url);
-            }
             Message::ToggleContextPage(context_page) => {
                 if self.context_page == context_page {
                     self.core.window.show_context = !self.core.window.show_context;
@@ -386,7 +404,7 @@ impl Application for Calculator {
         }
 
         Some(match self.context_page {
-            ContextPage::About => self.about(),
+            ContextPage::About => self.about_view()?.map(Message::Cosmic),
         })
     }
 
@@ -442,29 +460,6 @@ impl Application for Calculator {
 }
 
 impl Calculator {
-    /// The about page for this app.
-    pub fn about(&self) -> Element<Message> {
-        let cosmic_theme::Spacing { space_xxs, .. } = theme::active().cosmic().spacing;
-
-        let icon = widget::svg(widget::svg::Handle::from_memory(
-            &include_bytes!("../res/icons/hicolor/scalable/apps/icon.svg")[..],
-        ));
-
-        let title = widget::text::title3(fl!("app-title"));
-
-        let link = widget::button::link(REPOSITORY)
-            .on_press(Message::LaunchUrl(REPOSITORY.to_string()))
-            .padding(0);
-
-        widget::column()
-            .push(icon)
-            .push(title)
-            .push(link)
-            .align_x(Alignment::Center)
-            .spacing(space_xxs)
-            .into()
-    }
-
     fn update_config(&mut self) -> Task<Message> {
         app::command::set_theme(self.config.app_theme.theme())
     }
