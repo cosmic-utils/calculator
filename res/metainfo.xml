@@ -30,6 +30,15 @@
   <icon type="remote" height="256" width="256">https://raw.githubusercontent.com/cosmic-utils/calculator/main/res/icons/hicolor/scalable/apps/icon.svg</icon>
   <launchable type="desktop-id">dev.edfloreshz.Calculator.desktop</launchable>
   <releases>
+    <release version="0.1.1" date="2024-11-06">
+        <description>
+            <p>Toolkit improvements 🧰</p>
+            <ul>
+                <li>Revamped about page</li>
+                <li>Added window borders</li>
+            </ul>
+        </description>
+    </release>
     <release version="0.1.0" date="2024-10-03">
         <description>
             <p>Initial release! 🎉</p>

@@ -1021,7 +1021,7 @@ dependencies = [
 
 [[package]]
 name = "cosmic-ext-calculator"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "calculator-rs",
  "i18n-embed",

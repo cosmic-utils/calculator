@@ -1,6 +1,6 @@
 [package]
 name = "cosmic-ext-calculator"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 license = "GPL-3.0"
 
@@ -23,6 +23,9 @@ features = ["dbus-config", "tokio", "winit", "wgpu", "multi-window", "desktop"]
 [dependencies.i18n-embed]
 version = "0.14"
 features = ["fluent-system", "desktop-requester"]
+
+[patch."https://github.com/smithay/client-toolkit.git"]
+sctk = { package = "smithay-client-toolkit", version = "=0.19.2" }
 
 # Uncomment to test a locally-cloned libcosmic
 # [patch.'https://github.com/pop-os/libcosmic']
