@@ -8,7 +8,6 @@ use crate::config;
 use crate::config::CONFIG_VERSION;
 use crate::fl;
 use crate::operator::Operator;
-use cosmic::app::about::About;
 use cosmic::app::{self, Core, Message as CosmicMessage, Task};
 use cosmic::cosmic_config::Update;
 use cosmic::cosmic_theme::ThemeMode;
@@ -18,6 +17,7 @@ use cosmic::iced::{
     keyboard::{Key, Modifiers},
     Alignment, Event, Length, Subscription,
 };
+use cosmic::widget::about::About;
 use cosmic::widget::menu::Action;
 use cosmic::widget::{self, menu, nav_bar, ToastId};
 use cosmic::{cosmic_config, cosmic_theme, theme, Application, ApplicationExt, Element};
@@ -48,7 +48,7 @@ pub enum Message {
     CleanHistory,
     ShowToast(String),
     CloseToast(ToastId),
-    Cosmic(cosmic::app::cosmic::Message),
+    Open(String),
 }
 
 #[derive(Copy, Clone, Debug, Default, Eq, PartialEq)]
@@ -144,14 +144,22 @@ impl Application for Calculator {
         }
 
         let about = About::default()
-            .set_application_name(fl!("app-title"))
-            .set_application_icon(Self::APP_ID)
-            .set_developer_name("Eduardo Flores")
-            .set_license_type("GPL-3.0")
-            .set_version("0.1.1")
-            .set_support_url("https://github.com/cosmic-utils/calculator/issues")
-            .set_repository_url("https://github.com/cosmic-utils/calculator")
-            .set_developers([("Eduardo Flores".into(), "edfloreshz@proton.me".into())]);
+            .name(fl!("app-title"))
+            .icon(Self::APP_ID)
+            .version("0.1.1")
+            .author("Eduardo Flores")
+            .license("GPL-3.0-only")
+            .links([
+                (
+                    fl!("support"),
+                    "https://github.com/cosmic-utils/calculator/issues",
+                ),
+                (
+                    fl!("repository"),
+                    "https://github.com/cosmic-utils/calculator",
+                ),
+            ])
+            .developers([("Eduardo Flores".into(), "edfloreshz@proton.me".into())]);
 
         let mut app = Calculator {
             core,
@@ -173,10 +181,6 @@ impl Application for Calculator {
         }
 
         (app, Task::batch(tasks))
-    }
-
-    fn about(&self) -> Option<&About> {
-        Some(&self.about)
     }
 
     fn header_start(&self) -> Vec<Element<Self::Message>> {
@@ -373,10 +377,10 @@ impl Application for Calculator {
         }
 
         match message {
-            Message::Cosmic(message) => {
-                commands.push(cosmic::app::command::message(cosmic::app::message::cosmic(
-                    message,
-                )));
+            Message::Open(url) => {
+                if let Err(err) = open::that_detached(url) {
+                    log::error!("{err}")
+                }
             }
             Message::ShowToast(message) => {
                 commands.push(
@@ -453,7 +457,7 @@ impl Application for Calculator {
         }
 
         Some(match self.context_page {
-            ContextPage::About => self.about_view()?.map(Message::Cosmic),
+            ContextPage::About => widget::about(&self.about, Message::Open),
         })
     }
 
