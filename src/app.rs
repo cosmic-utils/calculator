@@ -6,6 +6,7 @@ use std::collections::HashMap;
 use crate::calculation::Calculation;
 use crate::config;
 use crate::config::CONFIG_VERSION;
+use crate::core::{icons, key_binds::key_binds};
 use crate::fl;
 use crate::operator::Operator;
 use cosmic::app::context_drawer;
@@ -19,7 +20,7 @@ use cosmic::iced::{
     Alignment, Event, Length, Subscription,
 };
 use cosmic::widget::about::About;
-use cosmic::widget::menu::Action;
+use cosmic::widget::menu::{Action, ItemHeight, ItemWidth};
 use cosmic::widget::{self, menu, nav_bar, ToastId};
 use cosmic::{cosmic_config, cosmic_theme, theme, Application, ApplicationExt, Element};
 
@@ -57,14 +58,6 @@ pub enum Message {
 pub enum ContextPage {
     #[default]
     About,
-}
-
-impl ContextPage {
-    fn _title(&self) -> String {
-        match self {
-            Self::About => fl!("about"),
-        }
-    }
 }
 
 #[derive(Clone, Debug)]
@@ -167,7 +160,7 @@ impl Application for Calculator {
             core,
             about,
             context_page: ContextPage::default(),
-            key_binds: HashMap::new(),
+            key_binds: key_binds(),
             nav,
             modifiers: Modifiers::empty(),
             config_handler: flags.config_handler,
@@ -191,11 +184,22 @@ impl Application for Calculator {
             menu::items(
                 &self.key_binds,
                 vec![
-                    menu::Item::Button(fl!("clear-history"), MenuAction::ClearHistory),
-                    menu::Item::Button(fl!("about"), MenuAction::About),
+                    menu::Item::Button(
+                        fl!("clear-history"),
+                        Some(icons::get_handle("large-brush-symbolic", 14)),
+                        MenuAction::ClearHistory,
+                    ),
+                    menu::Item::Button(
+                        fl!("about"),
+                        Some(icons::get_handle("settings-symbolic", 14)),
+                        MenuAction::About,
+                    ),
                 ],
             ),
-        )]);
+        )])
+        .item_height(ItemHeight::Dynamic(40))
+        .item_width(ItemWidth::Uniform(240))
+        .spacing(4.0);
 
         vec![menu_bar.into()]
     }
@@ -208,6 +212,7 @@ impl Application for Calculator {
             &HashMap::new(),
             vec![cosmic::widget::menu::Item::Button(
                 fl!("delete"),
+                Some(icons::get_handle("user-trash-symbolic", 14)),
                 NavMenuAction::Delete(id),
             )],
         ))

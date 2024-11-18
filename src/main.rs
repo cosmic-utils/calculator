@@ -9,6 +9,7 @@ mod operator;
 mod settings;
 
 fn main() -> cosmic::iced::Result {
-    let (settings, flags) = settings::init();
+    settings::init();
+    let (settings, flags) = (settings::settings(), settings::flags());
     cosmic::app::run::<Calculator>(settings, flags)
 }

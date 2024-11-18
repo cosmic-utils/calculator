@@ -1,18 +1,26 @@
-use crate::{app::Flags, config::CalculatorConfig, core::localization::set_localization};
+use std::sync::Mutex;
+
+use crate::{
+    app::Flags,
+    config::CalculatorConfig,
+    core::{
+        icons::{IconCache, ICON_CACHE},
+        localization::localize,
+    },
+};
 use cosmic::{
     app::Settings,
     iced::{Limits, Size},
 };
 
-pub fn init() -> (Settings, Flags) {
-    set_localization();
-    set_logger();
-    let settings = get_app_settings();
-    let flags = get_flags();
-    (settings, flags)
+pub fn init() {
+    localize();
+    std::env::set_var("RUST_LOG", "cosmic_ext_calculator=info");
+    pretty_env_logger::init();
+    ICON_CACHE.get_or_init(|| Mutex::new(IconCache::new()));
 }
 
-pub fn get_app_settings() -> Settings {
+pub fn settings() -> Settings {
     let config = CalculatorConfig::config();
 
     let mut settings = Settings::default();
@@ -23,7 +31,7 @@ pub fn get_app_settings() -> Settings {
     settings
 }
 
-pub fn get_flags() -> Flags {
+pub fn flags() -> Flags {
     let (config_handler, config) = (
         CalculatorConfig::config_handler(),
         CalculatorConfig::config(),
@@ -33,9 +41,4 @@ pub fn get_flags() -> Flags {
         config_handler,
         config,
     }
-}
-
-pub fn set_logger() {
-    std::env::set_var("RUST_LOG", "cosmic_ext_calculator=info");
-    pretty_env_logger::init();
 }
