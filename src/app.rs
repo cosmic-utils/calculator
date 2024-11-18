@@ -8,6 +8,7 @@ use crate::config;
 use crate::config::CONFIG_VERSION;
 use crate::fl;
 use crate::operator::Operator;
+use cosmic::app::context_drawer;
 use cosmic::app::{self, Core, Message as CosmicMessage, Task};
 use cosmic::cosmic_config::Update;
 use cosmic::cosmic_theme::ThemeMode;
@@ -41,6 +42,7 @@ pub enum Message {
     Operator(Operator),
     Input(String),
     ToggleContextPage(ContextPage),
+    ToggleContextDrawer,
     Key(Modifiers, Key),
     Modifiers(Modifiers),
     SystemThemeModeChange,
@@ -58,7 +60,7 @@ pub enum ContextPage {
 }
 
 impl ContextPage {
-    fn title(&self) -> String {
+    fn _title(&self) -> String {
         match self {
             Self::About => fl!("about"),
         }
@@ -159,7 +161,7 @@ impl Application for Calculator {
                     "https://github.com/cosmic-utils/calculator",
                 ),
             ])
-            .developers([("Eduardo Flores".into(), "edfloreshz@proton.me".into())]);
+            .developers([("Eduardo Flores", "edfloreshz@proton.me")]);
 
         let mut app = Calculator {
             core,
@@ -397,8 +399,9 @@ impl Application for Calculator {
                     self.context_page = context_page;
                     self.core.window.show_context = true;
                 }
-
-                self.set_context_title(context_page.title());
+            }
+            Message::ToggleContextDrawer => {
+                self.core.window.show_context = !self.core.window.show_context;
             }
             Message::Number(num) => self.calculation.on_number_press(num),
             Message::Input(input) => self.calculation.on_input(input),
@@ -451,13 +454,15 @@ impl Application for Calculator {
         Task::batch(commands)
     }
 
-    fn context_drawer(&self) -> Option<Element<Self::Message>> {
+    fn context_drawer(&self) -> Option<context_drawer::ContextDrawer<Self::Message>> {
         if !self.core.window.show_context {
             return None;
         }
 
         Some(match self.context_page {
-            ContextPage::About => widget::about(&self.about, Message::Open),
+            ContextPage::About => {
+                context_drawer::about(&self.about, Message::Open, Message::ToggleContextDrawer)
+            }
         })
     }
 
