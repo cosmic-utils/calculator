@@ -3,12 +3,9 @@
 use std::any::TypeId;
 use std::collections::HashMap;
 
-use crate::calculation::Calculation;
-use crate::config;
-use crate::config::CONFIG_VERSION;
+use crate::app::{calculation::Calculation, config::CONFIG_VERSION, operator::Operator};
 use crate::core::{icons, key_binds::key_binds};
 use crate::fl;
-use crate::operator::Operator;
 use cosmic::app::context_drawer;
 use cosmic::app::{self, Core, Message as CosmicMessage, Task};
 use cosmic::cosmic_config::Update;
@@ -23,6 +20,11 @@ use cosmic::widget::about::About;
 use cosmic::widget::menu::{Action, ItemHeight, ItemWidth};
 use cosmic::widget::{self, menu, nav_bar, ToastId};
 use cosmic::{cosmic_config, cosmic_theme, theme, Application, ApplicationExt, Element};
+
+mod calculation;
+mod config;
+mod operator;
+pub mod settings;
 
 pub struct Calculator {
     core: Core,
@@ -171,9 +173,7 @@ impl Application for Calculator {
 
         let mut tasks = vec![];
 
-        if let Some(id) = app.core.main_window_id() {
-            tasks.push(app.set_window_title(fl!("app-title"), id));
-        }
+        tasks.push(app.set_window_title(fl!("app-title")));
 
         (app, Task::batch(tasks))
     }
@@ -411,7 +411,7 @@ impl Application for Calculator {
             Message::Number(num) => self.calculation.on_number_press(num),
             Message::Input(input) => self.calculation.on_input(input),
             Message::Operator(operator) => match self.calculation.on_operator_press(&operator) {
-                crate::calculation::Message::Continue => {
+                crate::app::calculation::Message::Continue => {
                     if operator == Operator::Equal {
                         let mut history = self.config.history.clone();
                         history.push(self.calculation.clone());
@@ -423,7 +423,7 @@ impl Application for Calculator {
                         self.calculation.display = self.calculation.result.to_string();
                     }
                 }
-                crate::calculation::Message::Error(message) => {
+                crate::app::calculation::Message::Error(message) => {
                     let command = self.update(Message::ShowToast(message));
                     commands.push(command);
                 }

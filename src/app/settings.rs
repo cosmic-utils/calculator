@@ -1,8 +1,7 @@
 use std::sync::Mutex;
 
 use crate::{
-    app::Flags,
-    config::CalculatorConfig,
+    app::{config::CalculatorConfig, Flags},
     core::{
         icons::{IconCache, ICON_CACHE},
         localization::localize,

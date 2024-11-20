@@ -2,7 +2,7 @@ use calculator_rs::{Calculate, Value};
 use serde::{Deserialize, Serialize};
 use std::{error::Error, fmt::Display};
 
-use crate::operator::Operator;
+use crate::app::operator::Operator;
 
 #[derive(Debug, Clone, Default, PartialEq, Deserialize, Serialize)]
 pub struct Calculation {

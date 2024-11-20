@@ -2,11 +2,9 @@
 
 use app::Calculator;
 mod app;
-mod calculation;
-mod config;
 mod core;
-mod operator;
-mod settings;
+
+use app::settings;
 
 fn main() -> cosmic::iced::Result {
     settings::init();

@@ -4,7 +4,7 @@ use cosmic::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::{app::Calculator, calculation::Calculation};
+use crate::app::{calculation::Calculation, Calculator};
 
 pub const CONFIG_VERSION: u64 = 1;
 

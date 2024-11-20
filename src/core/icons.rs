@@ -42,6 +42,7 @@ impl IconCache {
         Self { cache }
     }
 
+    #[allow(dead_code)]
     pub fn get(&mut self, name: &'static str, size: u16) -> icon::Icon {
         let handle = self
             .cache
@@ -61,6 +62,7 @@ impl IconCache {
     }
 }
 
+#[allow(dead_code)]
 pub fn get_icon(name: &'static str, size: u16) -> icon::Icon {
     let mut icon_cache = ICON_CACHE.get().unwrap().lock().unwrap();
     icon_cache.get(name, size)
