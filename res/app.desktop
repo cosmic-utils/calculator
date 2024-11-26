@@ -7,4 +7,4 @@ StartupNotify=true
 Icon=dev.edfloreshz.Calculator
 Categories=COSMIC;Utility;
 Keywords=Folder;Manager;
-MimeType=inode/directory;
+MimeType=
