@@ -1,4 +1,4 @@
-use calculator_rs::{Calculate, Value};
+use evalexpr::*;
 use serde::{Deserialize, Serialize};
 use std::{error::Error, fmt::Display};
 
@@ -34,7 +34,12 @@ impl Calculation {
 
     pub fn on_number_press(&mut self, number: f32) {
         self.display.push_str(&number.to_string());
-        self.expression.push_str(&number.to_string());
+        let number = if number.fract() != 0.0 {
+            format!("{number}.0")
+        } else {
+            number.to_string()
+        };
+        self.expression.push_str(&number);
     }
 
     pub fn on_operator_press(&mut self, operator: &Operator) -> Message {
@@ -60,10 +65,12 @@ impl Calculation {
     }
 
     pub fn on_equals_press(&mut self) -> Result<(), Box<dyn Error>> {
-        log::info!("Expression -> {}", self.expression);
-        self.result = match self.expression.calculate()? {
-            Value::Integer(v) => v.to_string(),
+        let value = eval(&self.expression)?;
+        log::info!("Expression -> {} = {value}", self.expression);
+        self.result = match value {
+            Value::Int(v) => v.to_string(),
             Value::Float(v) => v.to_string(),
+            _ => String::new(),
         };
         Ok(())
     }
