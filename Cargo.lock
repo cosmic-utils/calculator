@@ -714,12 +714,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8318a53db07bb3f8dca91a600466bdb3f2eaadeedfdbcf02e1accbad9271ba50"
 
 [[package]]
-name = "calculator-rs"
-version = "0.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c8338e12e09bf5bd17a9c7fd54bc402b0b234f6b8e2cf21a4ed54e11c3e74be8"
-
-[[package]]
 name = "calloop"
 version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1032,7 +1026,7 @@ dependencies = [
 name = "cosmic-ext-calculator"
 version = "0.1.1"
 dependencies = [
- "calculator-rs",
+ "evalexpr",
  "i18n-embed",
  "i18n-embed-fl",
  "libcosmic",
@@ -1539,6 +1533,12 @@ checksum = "e0f0eb73b934648cd7a4a61f1b15391cd95dab0b4da6e2e66c2a072c144b4a20"
 dependencies = [
  "num-traits",
 ]
+
+[[package]]
+name = "evalexpr"
+version = "12.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "02a3229bec56a977f174b32fe7b8d89e8c79ebb4493d10ad763b6676dc2dc0c9"
 
 [[package]]
 name = "event-listener"
