@@ -3,9 +3,9 @@ about = Over
 view = Beeld
 delete = Verwijderen
 clear-history = Geschiedenis wissen
-malformed-expression = Foutieve uitdrukking
+malformed-expression = Misvormde expressie
 
 ## About
 repository = Repository
-support = Support
+support = Doneren
 website = Website
