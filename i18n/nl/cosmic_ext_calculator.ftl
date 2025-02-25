@@ -7,5 +7,5 @@ malformed-expression = Misvormde expressie
 
 ## About
 repository = Repository
-support = Doneren
+support = Ondersteuning
 website = Website
