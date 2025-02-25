@@ -7,5 +7,5 @@ malformed-expression = Espressione non valida
 
 ## About
 repository = Repository
-support = Supporto
+support = Aiuto
 website = Sito web
