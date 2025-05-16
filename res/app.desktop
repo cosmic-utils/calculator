@@ -1,5 +1,6 @@
 [Desktop Entry]
 Name=Calculator
+Name[pt]=Calculadora
 Exec=cosmic-ext-calculator %F
 Terminal=false
 Type=Application
