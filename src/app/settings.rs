@@ -24,8 +24,8 @@ pub fn settings() -> Settings {
 
     let mut settings = Settings::default();
     settings = settings.theme(config.app_theme.theme());
-    settings = settings.size_limits(Limits::NONE.min_width(270.0).min_height(450.0));
-    settings = settings.size(Size::new(270.0, 450.0));
+    settings = settings.size_limits(Limits::NONE.min_width(360.0).min_height(620.0));
+    settings = settings.size(Size::new(360.0, 620.0));
     settings = settings.debug(false);
     settings
 }
