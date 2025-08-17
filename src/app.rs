@@ -4,10 +4,10 @@ use std::any::TypeId;
 use std::collections::HashMap;
 
 use crate::app::{calculation::Calculation, config::CONFIG_VERSION, operator::Operator};
-use crate::core::{icons, key_binds::key_binds};
+use crate::core::key_binds::key_binds;
 use crate::fl;
 use cosmic::app::context_drawer;
-use cosmic::app::{self, Core, Message as CosmicMessage, Task};
+use cosmic::app::{self, Core, Task};
 use cosmic::cosmic_config::Update;
 use cosmic::cosmic_theme::ThemeMode;
 use cosmic::iced::{
@@ -17,8 +17,8 @@ use cosmic::iced::{
     Alignment, Event, Length, Subscription,
 };
 use cosmic::widget::about::About;
-use cosmic::widget::menu::{Action, ItemHeight, ItemWidth};
-use cosmic::widget::{self, menu, nav_bar, ToastId};
+use cosmic::widget::menu::Action;
+use cosmic::widget::{self, container, dropdown, menu, ToastId};
 use cosmic::{cosmic_config, cosmic_theme, theme, Application, ApplicationExt, Element};
 
 mod calculation;
@@ -31,7 +31,6 @@ pub struct Calculator {
     about: About,
     context_page: ContextPage,
     key_binds: HashMap<menu::KeyBind, MenuAction>,
-    nav: nav_bar::Model,
     modifiers: Modifiers,
     config_handler: Option<cosmic_config::Config>,
     config: config::CalculatorConfig,
@@ -41,7 +40,7 @@ pub struct Calculator {
 
 #[derive(Debug, Clone)]
 pub enum Message {
-    Number(f32),
+    Number(u8),
     Operator(Operator),
     Input(String),
     ToggleContextPage(ContextPage),
@@ -49,8 +48,9 @@ pub enum Message {
     Key(Modifiers, Key),
     Modifiers(Modifiers),
     SystemThemeModeChange,
-    NavMenuAction(NavMenuAction),
+    DropdownAction(usize),
     CleanHistory,
+    Undo,
     ShowToast(String),
     CloseToast(ToastId),
     Open(String),
@@ -72,6 +72,7 @@ pub struct Flags {
 pub enum MenuAction {
     About,
     ClearHistory,
+    Undo,
 }
 
 impl menu::action::MenuAction for MenuAction {
@@ -81,20 +82,8 @@ impl menu::action::MenuAction for MenuAction {
         match self {
             MenuAction::About => Message::ToggleContextPage(ContextPage::About),
             MenuAction::ClearHistory => Message::CleanHistory,
+            MenuAction::Undo => Message::Undo,
         }
-    }
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum NavMenuAction {
-    Delete(nav_bar::Id),
-}
-
-impl menu::action::MenuAction for NavMenuAction {
-    type Message = cosmic::app::Message<Message>;
-
-    fn message(&self) -> Self::Message {
-        cosmic::app::Message::App(Message::NavMenuAction(*self))
     }
 }
 
@@ -115,30 +104,14 @@ impl Application for Calculator {
         &mut self.core
     }
 
-    fn nav_model(&self) -> Option<&nav_bar::Model> {
-        Some(&self.nav)
-    }
-
-    fn on_nav_select(&mut self, id: nav_bar::Id) -> Task<Self::Message> {
-        self.nav.activate(id);
-        self.nav
-            .active_data()
-            .map_or(Task::none(), |data: &Calculation| {
-                self.calculation.expression = data.result.to_string().clone();
-                self.calculation.result = String::new();
-                self.calculation.display = data.expression.to_string();
-                Task::none()
-            })
-    }
-
     fn init(core: Core, flags: Self::Flags) -> (Self, Task<Self::Message>) {
-        let mut nav = nav_bar::Model::default();
+        // let mut nav = nav_bar::Model::default();
 
-        for entry in &flags.config.history {
-            nav.insert()
-                .text(entry.to_string().clone())
-                .data(entry.clone());
-        }
+        // for entry in &flags.config.history {
+        //     nav.insert()
+        //         .text(entry.to_string().clone())
+        //         .data(entry.clone());
+        // }
 
         let about = About::default()
             .name(fl!("app-title"))
@@ -163,7 +136,6 @@ impl Application for Calculator {
             about,
             context_page: ContextPage::default(),
             key_binds: key_binds(),
-            nav,
             modifiers: Modifiers::empty(),
             config_handler: flags.config_handler,
             config: flags.config,
@@ -179,178 +151,152 @@ impl Application for Calculator {
     }
 
     fn header_start(&self) -> Vec<Element<Self::Message>> {
-        let menu_bar = menu::bar(vec![menu::Tree::with_children(
-            menu::root(fl!("view")),
-            menu::items(
-                &self.key_binds,
-                vec![
-                    menu::Item::Button(
-                        fl!("clear-history"),
-                        Some(icons::get_handle("large-brush-symbolic", 14)),
-                        MenuAction::ClearHistory,
-                    ),
-                    menu::Item::Button(
-                        fl!("about"),
-                        Some(icons::get_handle("settings-symbolic", 14)),
-                        MenuAction::About,
-                    ),
-                ],
-            ),
-        )])
-        .item_height(ItemHeight::Dynamic(40))
-        .item_width(ItemWidth::Uniform(240))
-        .spacing(4.0);
+        // let button = Button::new("Undo").class(theme::Button::Standard);
+        let but = widget::button::custom(
+            widget::container(widget::text("Undo"))
+                .center(Length::Fill)
+                .width(Length::Shrink)
+                .height(Length::Shrink),
+        )
+        .class(theme::Button::HeaderBar)
+        .width(Length::Shrink)
+        .height(Length::Shrink)
+        .on_press(Message::Undo);
 
-        vec![menu_bar.into()]
+        vec![but.into()]
     }
 
-    fn nav_context_menu(
-        &self,
-        id: nav_bar::Id,
-    ) -> Option<Vec<menu::Tree<CosmicMessage<Self::Message>>>> {
-        Some(cosmic::widget::menu::items(
-            &HashMap::new(),
-            vec![cosmic::widget::menu::Item::Button(
-                fl!("delete"),
-                Some(icons::get_handle("user-trash-symbolic", 14)),
-                NavMenuAction::Delete(id),
-            )],
-        ))
+    fn header_center(&self) -> Vec<Element<Self::Message>> {
+        let dropdown = dropdown(&["Basic", "Programming"], Some(0), Message::DropdownAction);
+        vec![dropdown.into()]
     }
 
     fn view(&self) -> Element<Self::Message> {
         let spacing = cosmic::theme::active().cosmic().spacing;
 
-        widget::column::with_capacity(2)
-            .push(
-                widget::text_input("", &self.calculation.display)
-                    .on_input(Message::Input)
-                    .on_submit(Message::Operator(Operator::Equal))
-                    .size(32.0)
-                    .width(Length::Fill),
-            )
-            .push(
-                widget::column::with_capacity(5)
-                    .push(
-                        widget::row::with_capacity(3)
-                            .push(wide_button(
-                                Message::Operator(Operator::Clear),
-                                Length::FillPortion(2),
-                            ))
-                            .push(standard_button(
-                                Message::Operator(Operator::Modulus),
-                                Length::FillPortion(1),
-                            ))
-                            .push(suggested_button(
-                                Message::Operator(Operator::Divide),
-                                Length::FillPortion(1),
-                            ))
-                            .width(Length::Fill)
-                            .height(Length::Fill)
-                            .spacing(spacing.space_xs),
-                    )
-                    .push(
-                        widget::row::with_capacity(4)
-                            .push(standard_button(
-                                Message::Number(7.0),
-                                Length::FillPortion(1),
-                            ))
-                            .push(standard_button(
-                                Message::Number(8.0),
-                                Length::FillPortion(1),
-                            ))
-                            .push(standard_button(
-                                Message::Number(9.0),
-                                Length::FillPortion(1),
-                            ))
-                            .push(suggested_button(
-                                Message::Operator(Operator::Multiply),
-                                Length::FillPortion(1),
-                            ))
-                            .width(Length::Fill)
-                            .height(Length::Fill)
-                            .spacing(spacing.space_xs),
-                    )
-                    .push(
-                        widget::row::with_capacity(4)
-                            .push(standard_button(
-                                Message::Number(4.0),
-                                Length::FillPortion(1),
-                            ))
-                            .push(standard_button(
-                                Message::Number(5.0),
-                                Length::FillPortion(1),
-                            ))
-                            .push(standard_button(
-                                Message::Number(6.0),
-                                Length::FillPortion(1),
-                            ))
-                            .push(suggested_button(
-                                Message::Operator(Operator::Subtract),
-                                Length::FillPortion(1),
-                            ))
-                            .width(Length::Fill)
-                            .height(Length::Fill)
-                            .spacing(spacing.space_xs),
-                    )
-                    .push(
-                        widget::row::with_capacity(4)
-                            .push(standard_button(
-                                Message::Number(1.0),
-                                Length::FillPortion(1),
-                            ))
-                            .push(standard_button(
-                                Message::Number(2.0),
-                                Length::FillPortion(1),
-                            ))
-                            .push(standard_button(
-                                Message::Number(3.0),
-                                Length::FillPortion(1),
-                            ))
-                            .push(suggested_button(
-                                Message::Operator(Operator::Add),
-                                Length::FillPortion(1),
-                            ))
-                            .width(Length::Fill)
-                            .height(Length::Fill)
-                            .spacing(spacing.space_xs),
-                    )
-                    .push(
-                        widget::row::with_capacity(4)
-                            .push(standard_button(
-                                Message::Number(0.0),
-                                Length::FillPortion(1),
-                            ))
-                            .push(standard_button(
-                                Message::Operator(Operator::Point),
-                                Length::FillPortion(1),
-                            ))
-                            .push(standard_button(
-                                Message::Operator(Operator::Backspace),
-                                Length::FillPortion(1),
-                            ))
-                            .push(suggested_button(
-                                Message::Operator(Operator::Equal),
-                                Length::FillPortion(1),
-                            ))
-                            .width(Length::Fill)
-                            .height(Length::Fill)
-                            .spacing(spacing.space_xs),
-                    )
-                    .push(
-                        widget::row::row()
-                            .push(widget::toaster(&self.toasts, widget::horizontal_space())),
-                    )
-                    .max_width(1000.0)
-                    .width(Length::Fill)
-                    .height(Length::Fill)
-                    .align_x(Alignment::Center)
-                    .spacing(spacing.space_xs),
-            )
-            .align_x(Alignment::Center)
-            .spacing(spacing.space_s)
-            .padding(spacing.space_xxs)
-            .into()
+        container(
+            widget::column::with_capacity(3)
+                .push(
+                    widget::row::row()
+                        .push(widget::toaster(&self.toasts, widget::vertical_space())),
+                )
+                .push(
+                    widget::text_input("", &self.calculation.display)
+                        .on_input(Message::Input)
+                        .on_submit(Message::Operator(Operator::Equal))
+                        .size(32.0)
+                        .width(Length::Fill),
+                )
+                .push(
+                    widget::row::with_capacity(5)
+                        .push(
+                            widget::column::with_capacity(5)
+                                .push(standard_button(
+                                    Message::Operator(Operator::Clear),
+                                    Length::FillPortion(1),
+                                ))
+                                .push(suggested_button(Message::Number(7), Length::FillPortion(1)))
+                                .push(suggested_button(Message::Number(4), Length::FillPortion(1)))
+                                .push(suggested_button(Message::Number(1), Length::FillPortion(1)))
+                                .push(suggested_button(Message::Number(0), Length::FillPortion(1)))
+                                .width(Length::Fill)
+                                .height(Length::Fill)
+                                .spacing(spacing.space_xxxs),
+                        )
+                        .push(
+                            widget::column::with_capacity(5)
+                                .push(standard_button(
+                                    Message::Operator(Operator::StartGroup),
+                                    Length::FillPortion(1),
+                                ))
+                                .push(suggested_button(Message::Number(8), Length::FillPortion(1)))
+                                .push(suggested_button(Message::Number(5), Length::FillPortion(1)))
+                                .push(suggested_button(Message::Number(2), Length::FillPortion(1)))
+                                .push(standard_button(
+                                    Message::Operator(Operator::Point),
+                                    Length::FillPortion(1),
+                                ))
+                                .width(Length::Fill)
+                                .height(Length::Fill)
+                                .spacing(spacing.space_xxxs),
+                        )
+                        .push(
+                            widget::column::with_capacity(5)
+                                .push(standard_button(
+                                    Message::Operator(Operator::EndGroup),
+                                    Length::FillPortion(1),
+                                ))
+                                .push(suggested_button(Message::Number(9), Length::FillPortion(1)))
+                                .push(suggested_button(Message::Number(6), Length::FillPortion(1)))
+                                .push(suggested_button(Message::Number(3), Length::FillPortion(1)))
+                                .push(standard_button(
+                                    Message::Operator(Operator::Percentage),
+                                    Length::FillPortion(1),
+                                ))
+                                .width(Length::Fill)
+                                .height(Length::Fill)
+                                .spacing(spacing.space_xxxs),
+                        )
+                        .push(
+                            widget::column::with_capacity(5)
+                                .push(standard_button(
+                                    Message::Operator(Operator::Modulus),
+                                    Length::FillPortion(1),
+                                ))
+                                .push(standard_button(
+                                    Message::Operator(Operator::Divide),
+                                    Length::FillPortion(1),
+                                ))
+                                .push(standard_button(
+                                    Message::Operator(Operator::Multiply),
+                                    Length::FillPortion(1),
+                                ))
+                                .push(standard_button(
+                                    Message::Operator(Operator::Subtract),
+                                    Length::FillPortion(1),
+                                ))
+                                .push(standard_button(
+                                    Message::Operator(Operator::Add),
+                                    Length::FillPortion(1),
+                                ))
+                                .width(Length::Fill)
+                                .height(Length::Fill)
+                                .spacing(spacing.space_xxxs),
+                        )
+                        .push(
+                            widget::column::with_capacity(5)
+                                .push(standard_button(
+                                    Message::Operator(Operator::Pi),
+                                    Length::FillPortion(1),
+                                ))
+                                .push(standard_button(
+                                    Message::Operator(Operator::Root),
+                                    Length::FillPortion(1),
+                                ))
+                                .push(standard_button(
+                                    Message::Operator(Operator::Square),
+                                    Length::FillPortion(1),
+                                ))
+                                .push(suggested_button(
+                                    Message::Operator(Operator::Equal),
+                                    Length::FillPortion(2),
+                                ))
+                                .width(Length::Fill)
+                                .height(Length::Fill)
+                                .spacing(spacing.space_xxxs),
+                        )
+                        .width(Length::Fill)
+                        .height(Length::Fixed(200.0))
+                        .align_y(Alignment::Center)
+                        .spacing(spacing.space_none),
+                )
+                .align_x(Alignment::Center)
+                .spacing(spacing.space_l)
+                .padding(spacing.space_xxs)
+                .width(Length::Fixed(700.0)), // .into()
+        )
+        .center(Length::Fill)
+        .into()
     }
 
     fn update(&mut self, message: Self::Message) -> Task<Self::Message> {
@@ -416,10 +362,6 @@ impl Application for Calculator {
                         let mut history = self.config.history.clone();
                         history.push(self.calculation.clone());
                         config_set!(history, history);
-                        self.nav
-                            .insert()
-                            .text(self.calculation.to_string())
-                            .data(self.calculation.clone());
                         self.calculation.display = self.calculation.result.to_string();
                     }
                 }
@@ -438,22 +380,21 @@ impl Application for Calculator {
             Message::Modifiers(modifiers) => {
                 self.modifiers = modifiers;
             }
-            Message::NavMenuAction(action) => match action {
-                NavMenuAction::Delete(entity) => {
-                    if let Some(data) = self.nav.data::<Calculation>(entity).cloned() {
-                        let mut history = self.config.history.clone();
-                        history.retain(|calc| calc != &data);
-                        config_set!(history, history);
-                        self.nav.remove(entity);
-                    }
-                }
-            },
+            Message::DropdownAction(id) => {}
             Message::SystemThemeModeChange => {
                 return self.update_config();
             }
             Message::CleanHistory => {
                 config_set!(history, vec![]);
-                self.nav.clear();
+            }
+            Message::Undo => {
+                let mut last = self.config.history.clone();
+                println!("{:?}", last);
+                let prev = last.pop();
+                config_set!(history, last);
+                if let Some(v) = prev {
+                    self.calculation.display = v.expression;
+                }
             }
         }
         Task::batch(commands)
@@ -528,38 +469,29 @@ impl Calculator {
     }
 }
 
-pub fn wide_button<'a>(message: Message, width: Length) -> Element<'a, Message> {
+pub fn standard_button<'a>(message: Message, height: Length) -> Element<'a, Message> {
     let label = match message.clone() {
         Message::Number(num) => num.to_string(),
-        Message::Operator(operator) => operator.display().to_string(),
+        Message::Operator(operator) => operator.button_display().to_string(),
         _ => String::new(),
     };
-    button(label, message, theme::Button::Standard, width)
+    button(label, message, theme::Button::Standard, height)
 }
 
-pub fn standard_button<'a>(message: Message, width: Length) -> Element<'a, Message> {
-    let label = match message.clone() {
-        Message::Number(num) => num.to_string(),
-        Message::Operator(operator) => operator.display().to_string(),
-        _ => String::new(),
-    };
-    button(label, message, theme::Button::Standard, width)
-}
-
-pub fn suggested_button<'a>(message: Message, width: Length) -> Element<'a, Message> {
+pub fn suggested_button<'a>(message: Message, height: Length) -> Element<'a, Message> {
     let label = match &message {
         Message::Number(num) => num.to_string(),
-        Message::Operator(operator) => operator.display().to_string(),
+        Message::Operator(operator) => operator.button_display().to_string(),
         _ => String::new(),
     };
-    button(label.to_string(), message, theme::Button::Suggested, width)
+    button(label.to_string(), message, theme::Button::Suggested, height)
 }
 
 pub fn button<'a>(
     label: String,
     message: Message,
     style: theme::Button,
-    width: Length,
+    height: Length,
 ) -> Element<'a, Message> {
     widget::button::custom(
         widget::container(widget::text(label).size(20.0))
@@ -568,8 +500,8 @@ pub fn button<'a>(
             .height(Length::Fill),
     )
     .class(style)
-    .width(width)
-    .height(Length::Fill)
+    .width(Length::Fill)
+    .height(height)
     .on_press(message)
     .into()
 }
