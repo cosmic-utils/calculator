@@ -3,23 +3,24 @@
 use std::any::TypeId;
 use std::collections::HashMap;
 
-use crate::app::{calculation::Calculation, config::CONFIG_VERSION, operator::Operator};
+use crate::app::calculation::Calculation;
+use crate::app::{config::CONFIG_VERSION, operator::Operator};
 use crate::core::{icons, key_binds::key_binds};
-use crate::fl;
+use crate::{fl, launcher};
 use cosmic::app::context_drawer;
-use cosmic::app::{self, Core, Message as CosmicMessage, Task};
+use cosmic::app::{Core, Task};
 use cosmic::cosmic_config::Update;
 use cosmic::cosmic_theme::ThemeMode;
 use cosmic::iced::{
-    event,
+    Alignment, Event, Length, Subscription, event,
     keyboard::Event as KeyEvent,
     keyboard::{Key, Modifiers},
-    Alignment, Event, Length, Subscription,
 };
 use cosmic::widget::about::About;
 use cosmic::widget::menu::{Action, ItemHeight, ItemWidth};
-use cosmic::widget::{self, menu, nav_bar, ToastId};
-use cosmic::{cosmic_config, cosmic_theme, theme, Application, ApplicationExt, Element};
+use cosmic::widget::{self, RcElementWrapper, ToastId, menu, nav_bar};
+use cosmic::{Application, ApplicationExt, Element, cosmic_config, cosmic_theme, theme};
+use tokio::sync::mpsc;
 
 mod calculation;
 mod config;
@@ -35,15 +36,17 @@ pub struct Calculator {
     modifiers: Modifiers,
     config_handler: Option<cosmic_config::Config>,
     config: config::CalculatorConfig,
+    tx: Option<mpsc::Sender<launcher::Request>>,
     calculation: Calculation,
     toasts: widget::Toasts<Message>,
 }
 
 #[derive(Debug, Clone)]
 pub enum Message {
-    Number(f32),
+    Number(i32),
     Operator(Operator),
     Input(String),
+    LauncherEvent(launcher::Event),
     ToggleContextPage(ContextPage),
     ToggleContextDrawer,
     Key(Modifiers, Key),
@@ -91,10 +94,10 @@ pub enum NavMenuAction {
 }
 
 impl menu::action::MenuAction for NavMenuAction {
-    type Message = cosmic::app::Message<Message>;
+    type Message = cosmic::Action<Message>;
 
     fn message(&self) -> Self::Message {
-        cosmic::app::Message::App(Message::NavMenuAction(*self))
+        cosmic::Action::App(Message::NavMenuAction(*self))
     }
 }
 
@@ -121,14 +124,7 @@ impl Application for Calculator {
 
     fn on_nav_select(&mut self, id: nav_bar::Id) -> Task<Self::Message> {
         self.nav.activate(id);
-        self.nav
-            .active_data()
-            .map_or(Task::none(), |data: &Calculation| {
-                self.calculation.expression = data.result.to_string().clone();
-                self.calculation.result = String::new();
-                self.calculation.display = data.expression.to_string();
-                Task::none()
-            })
+        Task::none()
     }
 
     fn init(core: Core, flags: Self::Flags) -> (Self, Task<Self::Message>) {
@@ -136,13 +132,13 @@ impl Application for Calculator {
 
         for entry in &flags.config.history {
             nav.insert()
-                .text(entry.to_string().clone())
+                .text(entry.expression.clone())
                 .data(entry.clone());
         }
 
         let about = About::default()
             .name(fl!("app-title"))
-            .icon(Self::APP_ID)
+            .icon(widget::icon::from_name(Self::APP_ID))
             .version("0.1.1")
             .author("Eduardo Flores")
             .license("GPL-3.0-only")
@@ -167,6 +163,7 @@ impl Application for Calculator {
             modifiers: Modifiers::empty(),
             config_handler: flags.config_handler,
             config: flags.config,
+            tx: None,
             calculation: Calculation::new(),
             toasts: widget::toaster::Toasts::new(Message::CloseToast),
         };
@@ -180,7 +177,7 @@ impl Application for Calculator {
 
     fn header_start(&self) -> Vec<Element<Self::Message>> {
         let menu_bar = menu::bar(vec![menu::Tree::with_children(
-            menu::root(fl!("view")),
+            RcElementWrapper::new(menu::root(fl!("view")).into()),
             menu::items(
                 &self.key_binds,
                 vec![
@@ -207,7 +204,7 @@ impl Application for Calculator {
     fn nav_context_menu(
         &self,
         id: nav_bar::Id,
-    ) -> Option<Vec<menu::Tree<CosmicMessage<Self::Message>>>> {
+    ) -> Option<Vec<menu::Tree<cosmic::Action<Self::Message>>>> {
         Some(cosmic::widget::menu::items(
             &HashMap::new(),
             vec![cosmic::widget::menu::Item::Button(
@@ -218,14 +215,14 @@ impl Application for Calculator {
         ))
     }
 
-    fn view(&self) -> Element<Self::Message> {
+    fn view<'a>(&'a self) -> Element<'a, Self::Message> {
         let spacing = cosmic::theme::active().cosmic().spacing;
 
         widget::column::with_capacity(2)
             .push(
-                widget::text_input("", &self.calculation.display)
+                widget::text_input("", &self.calculation.expression)
                     .on_input(Message::Input)
-                    .on_submit(Message::Operator(Operator::Equal))
+                    .on_submit(|_| Message::Operator(Operator::Equal))
                     .size(32.0)
                     .width(Length::Fill),
             )
@@ -251,18 +248,9 @@ impl Application for Calculator {
                     )
                     .push(
                         widget::row::with_capacity(4)
-                            .push(standard_button(
-                                Message::Number(7.0),
-                                Length::FillPortion(1),
-                            ))
-                            .push(standard_button(
-                                Message::Number(8.0),
-                                Length::FillPortion(1),
-                            ))
-                            .push(standard_button(
-                                Message::Number(9.0),
-                                Length::FillPortion(1),
-                            ))
+                            .push(standard_button(Message::Number(7), Length::FillPortion(1)))
+                            .push(standard_button(Message::Number(8), Length::FillPortion(1)))
+                            .push(standard_button(Message::Number(9), Length::FillPortion(1)))
                             .push(suggested_button(
                                 Message::Operator(Operator::Multiply),
                                 Length::FillPortion(1),
@@ -273,18 +261,9 @@ impl Application for Calculator {
                     )
                     .push(
                         widget::row::with_capacity(4)
-                            .push(standard_button(
-                                Message::Number(4.0),
-                                Length::FillPortion(1),
-                            ))
-                            .push(standard_button(
-                                Message::Number(5.0),
-                                Length::FillPortion(1),
-                            ))
-                            .push(standard_button(
-                                Message::Number(6.0),
-                                Length::FillPortion(1),
-                            ))
+                            .push(standard_button(Message::Number(4), Length::FillPortion(1)))
+                            .push(standard_button(Message::Number(5), Length::FillPortion(1)))
+                            .push(standard_button(Message::Number(6), Length::FillPortion(1)))
                             .push(suggested_button(
                                 Message::Operator(Operator::Subtract),
                                 Length::FillPortion(1),
@@ -295,18 +274,9 @@ impl Application for Calculator {
                     )
                     .push(
                         widget::row::with_capacity(4)
-                            .push(standard_button(
-                                Message::Number(1.0),
-                                Length::FillPortion(1),
-                            ))
-                            .push(standard_button(
-                                Message::Number(2.0),
-                                Length::FillPortion(1),
-                            ))
-                            .push(standard_button(
-                                Message::Number(3.0),
-                                Length::FillPortion(1),
-                            ))
+                            .push(standard_button(Message::Number(1), Length::FillPortion(1)))
+                            .push(standard_button(Message::Number(2), Length::FillPortion(1)))
+                            .push(standard_button(Message::Number(3), Length::FillPortion(1)))
                             .push(suggested_button(
                                 Message::Operator(Operator::Add),
                                 Length::FillPortion(1),
@@ -317,10 +287,7 @@ impl Application for Calculator {
                     )
                     .push(
                         widget::row::with_capacity(4)
-                            .push(standard_button(
-                                Message::Number(0.0),
-                                Length::FillPortion(1),
-                            ))
+                            .push(standard_button(Message::Number(0), Length::FillPortion(1)))
                             .push(standard_button(
                                 Message::Operator(Operator::Point),
                                 Length::FillPortion(1),
@@ -364,7 +331,7 @@ impl Application for Calculator {
                         match paste::paste! { self.config.[<set_ $name>](config_handler, $value) } {
                             Ok(_) => {}
                             Err(err) => {
-                                log::warn!(
+                                tracing::warn!(
                                     "failed to save config {:?}: {}",
                                     stringify!($name),
                                     err
@@ -374,7 +341,7 @@ impl Application for Calculator {
                     }
                     None => {
                         self.config.$name = $value;
-                        log::warn!(
+                        tracing::warn!(
                             "failed to save config {:?}: no config handler",
                             stringify!($name)
                         );
@@ -386,14 +353,55 @@ impl Application for Calculator {
         match message {
             Message::Open(url) => {
                 if let Err(err) = open::that_detached(url) {
-                    log::error!("{err}")
+                    tracing::error!("{err}")
                 }
             }
+            Message::LauncherEvent(event) => match event {
+                launcher::Event::Started(tx) => {
+                    self.tx.replace(tx);
+                    self.request(launcher::Request::Search(
+                        self.calculation.expression.clone(),
+                    ));
+                }
+                launcher::Event::ServiceIsClosed => {
+                    self.request(launcher::Request::ServiceIsClosed);
+                }
+                launcher::Event::Response(response) => match response {
+                    pop_launcher::Response::Close => {
+                        tracing::info!("Closed launcher");
+                        self.calculation.clear();
+                    }
+                    pop_launcher::Response::Fill(s) => {
+                        tracing::info!("Responded with {s}");
+                        self.calculation.expression = s;
+                        self.request(launcher::Request::Search(
+                            self.calculation.expression.clone(),
+                        ));
+                    }
+                    pop_launcher::Response::Update(results) => {
+                        if results.is_empty() {
+                            self.calculation.expression = "".to_string();
+                        }
+
+                        if let Some(result) = results.get(0) {
+                            tracing::info!("Result is: {}", result.name);
+                            if let Ok(_) = result.name.parse::<f64>() {
+                                self.calculation.expression = result.name.clone();
+                            } else if result.name.contains('≈') {
+                                self.calculation.expression = result.name.clone();
+                            }
+                        }
+                    }
+                    _ => {
+                        tracing::info!("Other option reached");
+                    }
+                },
+            },
             Message::ShowToast(message) => {
                 commands.push(
                     self.toasts
                         .push(widget::toaster::Toast::new(message))
-                        .map(cosmic::app::Message::App),
+                        .map(cosmic::Action::App),
                 );
             }
             Message::CloseToast(id) => self.toasts.remove(id),
@@ -411,21 +419,24 @@ impl Application for Calculator {
             Message::Number(num) => self.calculation.on_number_press(num),
             Message::Input(input) => self.calculation.on_input(input),
             Message::Operator(operator) => match self.calculation.on_operator_press(&operator) {
-                crate::app::calculation::Message::Continue => {
+                Some(crate::app::calculation::Message::Calculate(mut expression)) => {
+                    if expression.contains('≈') {
+                        expression = expression.replace("≈", "").trim().to_string();
+                    }
+                    self.request(launcher::Request::Search(expression));
+                }
+                None => {
+                    tracing::info!("Operator: {:?}", operator);
                     if operator == Operator::Equal {
                         let mut history = self.config.history.clone();
                         history.push(self.calculation.clone());
                         config_set!(history, history);
                         self.nav
                             .insert()
-                            .text(self.calculation.to_string())
+                            .text(self.calculation.expression.clone())
                             .data(self.calculation.clone());
-                        self.calculation.display = self.calculation.result.to_string();
+                        self.calculation.expression = self.calculation.result.to_string();
                     }
-                }
-                crate::app::calculation::Message::Error(message) => {
-                    let command = self.update(Message::ShowToast(message));
-                    commands.push(command);
                 }
             },
             Message::Key(modifiers, key) => {
@@ -476,6 +487,7 @@ impl Application for Calculator {
         struct ThemeSubscription;
 
         let subscriptions = vec![
+            launcher::subscription(0).map(Message::LauncherEvent),
             event::listen_with(|event, status, _id| match event {
                 Event::Keyboard(KeyEvent::KeyPressed { key, modifiers, .. }) => match status {
                     event::Status::Ignored => Some(Message::Key(modifiers, key)),
@@ -493,7 +505,7 @@ impl Application for Calculator {
             )
             .map(|update: Update<ThemeMode>| {
                 if !update.errors.is_empty() {
-                    log::info!(
+                    tracing::info!(
                         "errors loading config {:?}: {:?}",
                         update.keys,
                         update.errors
@@ -508,7 +520,7 @@ impl Application for Calculator {
             )
             .map(|update: Update<ThemeMode>| {
                 if !update.errors.is_empty() {
-                    log::info!(
+                    tracing::info!(
                         "errors loading theme mode {:?}: {:?}",
                         update.keys,
                         update.errors
@@ -523,8 +535,19 @@ impl Application for Calculator {
 }
 
 impl Calculator {
+    fn request(&self, r: launcher::Request) {
+        tracing::debug!("request: {:?}", r);
+        if let Some(tx) = &self.tx {
+            if let Err(e) = tx.blocking_send(r) {
+                tracing::error!("tx: {e}");
+            }
+        } else {
+            tracing::info!("tx not found");
+        }
+    }
+
     fn update_config(&mut self) -> Task<Message> {
-        app::command::set_theme(self.config.app_theme.theme())
+        cosmic::command::set_theme(self.config.app_theme.theme())
     }
 }
 
