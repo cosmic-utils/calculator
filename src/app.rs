@@ -124,7 +124,13 @@ impl Application for Calculator {
 
     fn on_nav_select(&mut self, id: nav_bar::Id) -> Task<Self::Message> {
         self.nav.activate(id);
-        Task::none()
+        self.nav
+            .active_data()
+            .map_or(Task::none(), |data: &Calculation| {
+                self.calculation.expression = data.result.to_string().clone();
+                self.calculation.result = String::new();
+                Task::none()
+            })
     }
 
     fn init(core: Core, flags: Self::Flags) -> (Self, Task<Self::Message>) {
@@ -359,9 +365,6 @@ impl Application for Calculator {
             Message::LauncherEvent(event) => match event {
                 launcher::Event::Started(tx) => {
                     self.tx.replace(tx);
-                    self.request(launcher::Request::Search(
-                        self.calculation.expression.clone(),
-                    ));
                 }
                 launcher::Event::ServiceIsClosed => {
                     self.request(launcher::Request::ServiceIsClosed);
@@ -383,12 +386,38 @@ impl Application for Calculator {
                             self.calculation.expression = "".to_string();
                         }
 
-                        if let Some(result) = results.get(0) {
-                            tracing::info!("Result is: {}", result.name);
-                            if let Ok(_) = result.name.parse::<f64>() {
-                                self.calculation.expression = result.name.clone();
-                            } else if result.name.contains('≈') {
-                                self.calculation.expression = result.name.clone();
+                        match results.get(0) {
+                            Some(result) => {
+                                tracing::info!("Result is: {}", result.name);
+                                if let Ok(_) = result.name.parse::<f64>() {
+                                    let mut history = self.config.history.clone();
+                                    self.calculation.result = result.name.clone();
+                                    history.push(self.calculation.clone());
+                                    config_set!(history, history);
+                                    self.nav
+                                        .insert()
+                                        .text(self.calculation.expression.clone())
+                                        .data(self.calculation.clone());
+
+                                    self.calculation.expression = result.name.clone();
+                                } else if result.name.contains('≈') {
+                                    let mut history = self.config.history.clone();
+                                    self.calculation.result = result.name.clone();
+                                    history.push(self.calculation.clone());
+                                    config_set!(history, history);
+                                    self.nav
+                                        .insert()
+                                        .text(self.calculation.expression.clone())
+                                        .data(self.calculation.clone());
+
+                                    self.calculation.expression = result.name.clone();
+                                }
+                            }
+                            None => {
+                                let command = self.update(Message::ShowToast(
+                                    "Unable to compute result".to_string(),
+                                ));
+                                commands.push(command);
                             }
                         }
                     }
