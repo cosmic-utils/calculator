@@ -178,6 +178,12 @@ impl Application for Calculator {
 
         tasks.push(app.set_window_title(fl!("app-title")));
 
+        if !std::process::Command::new("pop-launcher").spawn().is_ok() {
+            tasks.push(app.update(Message::ShowToast(
+                "This app needs pop-launcher to work".to_string(),
+            )));
+        }
+
         (app, Task::batch(tasks))
     }
 

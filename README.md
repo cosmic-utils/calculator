@@ -9,5 +9,7 @@
   ![window-dark.png](https://raw.githubusercontent.com/edfloreshz/cosmic-ext-calculator/main/res/screenshots/window-dark.png#gh-dark-mode-only)
 </div>
 
+> This app uses `pop-launcher` as its backend, you'll need to install it for it to work.
+
 # History
 The calculator has an operations history, providing the ability to bring previous calculations back to the screen for further use or inspection.
