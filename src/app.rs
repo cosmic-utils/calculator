@@ -181,7 +181,7 @@ impl Application for Calculator {
         (app, Task::batch(tasks))
     }
 
-    fn header_start(&self) -> Vec<Element<Self::Message>> {
+    fn header_start<'a>(&'a self) -> Vec<Element<'a, Self::Message>> {
         let menu_bar = menu::bar(vec![menu::Tree::with_children(
             RcElementWrapper::new(menu::root(fl!("view")).into()),
             menu::items(
@@ -386,21 +386,11 @@ impl Application for Calculator {
                             self.calculation.expression = "".to_string();
                         }
 
-                        match results.get(0) {
+                        match results.first() {
                             Some(result) => {
                                 tracing::info!("Result is: {}", result.name);
-                                if let Ok(_) = result.name.parse::<f64>() {
-                                    let mut history = self.config.history.clone();
-                                    self.calculation.result = result.name.clone();
-                                    history.push(self.calculation.clone());
-                                    config_set!(history, history);
-                                    self.nav
-                                        .insert()
-                                        .text(self.calculation.expression.clone())
-                                        .data(self.calculation.clone());
-
-                                    self.calculation.expression = result.name.clone();
-                                } else if result.name.contains('≈') {
+                                if result.name.parse::<f64>().is_ok() || result.name.contains('≈')
+                                {
                                     let mut history = self.config.history.clone();
                                     self.calculation.result = result.name.clone();
                                     history.push(self.calculation.clone());
@@ -499,7 +489,7 @@ impl Application for Calculator {
         Task::batch(commands)
     }
 
-    fn context_drawer(&self) -> Option<context_drawer::ContextDrawer<Self::Message>> {
+    fn context_drawer<'a>(&'a self) -> Option<context_drawer::ContextDrawer<'a, Self::Message>> {
         if !self.core.window.show_context {
             return None;
         }

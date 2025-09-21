@@ -1,10 +1,11 @@
 use cosmic::{
-    cosmic_config::{self, cosmic_config_derive::CosmicConfigEntry, Config, CosmicConfigEntry},
-    theme, Application,
+    Application,
+    cosmic_config::{self, Config, CosmicConfigEntry, cosmic_config_derive::CosmicConfigEntry},
+    theme,
 };
 use serde::{Deserialize, Serialize};
 
-use crate::app::{calculation::Calculation, Calculator};
+use crate::app::{Calculator, calculation::Calculation};
 
 pub const CONFIG_VERSION: u64 = 1;
 

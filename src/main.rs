@@ -3,7 +3,6 @@
 use app::Calculator;
 mod app;
 mod core;
-mod error;
 mod launcher;
 
 use app::settings;

@@ -1,5 +1,5 @@
 use cosmic::{
-    iced::{futures::SinkExt, Subscription},
+    iced::{Subscription, futures::SinkExt},
     iced_futures::MaybeSend,
 };
 use pop_launcher_service::{Args, IpcClient};
@@ -10,11 +10,6 @@ use tokio_stream::{Stream, StreamExt};
 #[derive(Debug, Clone)]
 pub enum Request {
     Search(String),
-    Activate(u32),
-    Context(u32),
-    Complete(u32),
-    ActivateContext(u32, u32),
-    Close,
     ServiceIsClosed,
 }
 
@@ -57,33 +52,6 @@ pub fn service() -> impl Stream<Item = Event> + MaybeSend {
                     tracing::info!("Searched {s}");
                     if let Some((client, _)) = client_request(&responses_tx, client) {
                         let _res = client.send(pop_launcher::Request::Search(s)).await;
-                    }
-                }
-                Request::Activate(i) => {
-                    if let Some((client, _)) = client_request(&responses_tx, client) {
-                        let _res = client.send(pop_launcher::Request::Activate(i)).await;
-                    }
-                }
-                Request::Context(i) => {
-                    if let Some((client, _)) = client_request(&responses_tx, client) {
-                        let _res = client.send(pop_launcher::Request::Context(i)).await;
-                    }
-                }
-                Request::ActivateContext(id, context) => {
-                    if let Some((client, _)) = client_request(&responses_tx, client) {
-                        let _res = client
-                            .send(pop_launcher::Request::ActivateContext { id, context })
-                            .await;
-                    }
-                }
-                Request::Close => {
-                    if let Some((client, _)) = client_request(&responses_tx, client) {
-                        let _res = client.send(pop_launcher::Request::Close).await;
-                    }
-                }
-                Request::Complete(id) => {
-                    if let Some((client, _)) = client_request(&responses_tx, client) {
-                        let _res = client.send(pop_launcher::Request::Complete(id)).await;
                     }
                 }
                 Request::ServiceIsClosed => {
