@@ -3,21 +3,30 @@ appid := 'dev.edfloreshz.Calculator'
 
 rootdir := ''
 prefix := '/usr'
+flatpak-prefix := '/app'
 
 base-dir := absolute_path(clean(rootdir / prefix))
+flatpak-base-dir := absolute_path(clean(rootdir / flatpak-prefix))
+
+export INSTALL_DIR := base-dir / 'share'
 
 bin-src := 'target' / 'release' / name
 bin-dst := base-dir / 'bin' / name
+flatpak-bin-dst := flatpak-base-dir / 'bin' / name
 
 desktop := appid + '.desktop'
 desktop-src := 'res' / desktop
 desktop-dst := clean(rootdir / prefix) / 'share' / 'applications' / desktop
+flatpak-desktop-dst := clean(rootdir / flatpak-prefix) / 'share' / 'applications' / desktop
+
+metainfo := appid + '.metainfo.xml'
+metainfo-src := 'res' / metainfo
+metainfo-dst := clean(rootdir / prefix) / 'share' / 'metainfo' / metainfo
+flatpak-metainfo-dst := clean(rootdir / flatpak-prefix) / 'share' / 'metainfo' / metainfo
 
 icons-src := 'res' / 'icons' / 'hicolor'
 icons-dst := clean(rootdir / prefix) / 'share' / 'icons' / 'hicolor'
-
-icon-svg-src := icons-src / 'scalable' / 'apps' / 'icon.svg'
-icon-svg-dst := icons-dst / 'scalable' / 'apps' / appid + '.svg'
+flatpak-icons-dst := clean(rootdir / flatpak-prefix) / 'share' / 'icons' / 'hicolor'
 
 # Default recipe which runs `just build-release`
 default: build-release
@@ -57,12 +66,20 @@ run *args:
 # Installs files
 install:
     install -Dm0755 {{bin-src}} {{bin-dst}}
-    install -Dm0644 res/app.desktop {{desktop-dst}}
-    install -Dm0644 {{icon-svg-src}} {{icon-svg-dst}}
+    install -Dm0644 {{desktop-src}} {{desktop-dst}}
+    install -Dm0644 {{metainfo-src}} {{metainfo-dst}}
+    install -Dm0644 "{{icons-src}}/scalable/apps/{{APPID}}.svg" "{{flatpak-icons-dst}}/scalable/apps/{{APPID}}.svg"; \
+
+# Installs flatpak files
+flatpak:
+    install -Dm0755 {{bin-src}} {{flatpak-bin-dst}}
+    install -Dm0644 {{desktop-src}} {{flatpak-desktop-dst}}
+    install -Dm0644 {{metainfo-src}} {{flatpak-metainfo-dst}}
+    install -Dm0644 "{{icons-src}}/scalable/apps/{{APPID}}.svg" "{{flatpak-icons-dst}}/scalable/apps/{{APPID}}.svg"; \
 
 # Uninstalls installed files
 uninstall:
-    rm {{bin-dst}} {{desktop-dst}} {{icon-svg-dst}}
+    rm {{bin-dst}} {{desktop-dst}} {{icon-dst}}
 
 # Vendor dependencies locally
 vendor:
