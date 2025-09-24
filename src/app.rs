@@ -145,7 +145,7 @@ impl Application for CosmicCalculator {
 
         for entry in &flags.config.history {
             nav.insert()
-                .text(entry.to_string().clone())
+                .text(entry.expression.clone())
                 .data(entry.clone());
         }
 
@@ -418,6 +418,7 @@ impl Application for CosmicCalculator {
             }
             Message::SetOutcome(outcome) => match outcome {
                 Some(outcome) => {
+                    tracing::info!("Raw outcome: {}", outcome);
                     let outcome = operations::extract_value(&outcome);
                     self.calculator.outcome = outcome.to_string();
                     let mut history = self.config.history.clone();

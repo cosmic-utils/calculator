@@ -1,12 +1,12 @@
+use crate::app::operator::Operator;
 use regex::Regex;
+use semver::Version;
 use serde::{Deserialize, Serialize};
 use std::{fmt::Display, io, process::Stdio, sync::LazyLock};
 use tokio::{
     io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
     process::Command,
 };
-
-use crate::app::operator::Operator;
 
 static REGEX: LazyLock<Regex> =
     LazyLock::new(|| Regex::new("\\x1B\\[(?:;?[0-9]{1,3})+[mGK]").expect("bad regex for qalc"));
@@ -78,6 +78,23 @@ impl Calculator {
     }
 }
 
+pub async fn qalc_version() -> Option<String> {
+    let output = Command::new("qalc")
+        .arg("--version")
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .output()
+        .await
+        .ok()?;
+
+    if !output.status.success() {
+        return None;
+    }
+
+    let version = String::from_utf8_lossy(&output.stdout).trim().to_string();
+    Some(version)
+}
+
 pub async fn evaluate(expression: &str, decimal_comma: bool) -> Option<String> {
     let mut command = Command::new("qalc");
 
@@ -90,7 +107,16 @@ pub async fn evaluate(expression: &str, decimal_comma: bool) -> Option<String> {
         command.args(["-set", "decimal comma off"]);
     }
 
-    command.args(["-set", "autocalc on"]);
+    let min_version = Version::parse("5.4.0").unwrap();
+
+    let autocalc = qalc_version()
+        .await
+        .and_then(|version| Version::parse(&version).ok())
+        .map_or(false, |current| current >= min_version);
+
+    if autocalc {
+        command.args(["-set", "autocalc on"]);
+    }
 
     let spawn = command
         .env("LANG", "C")
@@ -183,6 +209,10 @@ pub async fn evaluate(expression: &str, decimal_comma: bool) -> Option<String> {
 
             output.push_str(&normalized.replace('\u{2212}', "-"));
         };
+    }
+
+    if output.is_empty() {
+        return None;
     }
 
     Some(output)
