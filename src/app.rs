@@ -3,30 +3,37 @@
 use std::any::TypeId;
 use std::collections::HashMap;
 
-use crate::app::{calculation::Calculation, config::CONFIG_VERSION, operator::Operator};
+use crate::app::{config::CONFIG_VERSION, operations::Calculator, operator::Operator};
 use crate::core::{icons, key_binds::key_binds};
 use crate::fl;
-use cosmic::app::context_drawer;
-use cosmic::app::{self, Core, Message as CosmicMessage, Task};
-use cosmic::cosmic_config::Update;
-use cosmic::cosmic_theme::ThemeMode;
-use cosmic::iced::{
-    event,
-    keyboard::Event as KeyEvent,
-    keyboard::{Key, Modifiers},
-    Alignment, Event, Length, Subscription,
+use cosmic::widget::RcElementWrapper;
+use cosmic::{
+    Application, ApplicationExt, Element,
+    app::{Core, Task, context_drawer},
+    cosmic_config,
+    cosmic_config::Update,
+    cosmic_theme,
+    cosmic_theme::ThemeMode,
+    iced::{
+        Alignment, Event, Length, Subscription, event,
+        keyboard::Event as KeyEvent,
+        keyboard::{Key, Modifiers},
+    },
+    theme,
+    widget::{
+        self, ToastId,
+        about::About,
+        menu::{self, Action, ItemHeight, ItemWidth},
+        nav_bar,
+    },
 };
-use cosmic::widget::about::About;
-use cosmic::widget::menu::{Action, ItemHeight, ItemWidth};
-use cosmic::widget::{self, menu, nav_bar, ToastId};
-use cosmic::{cosmic_config, cosmic_theme, theme, Application, ApplicationExt, Element};
 
-mod calculation;
 mod config;
+mod operations;
 mod operator;
 pub mod settings;
 
-pub struct Calculator {
+pub struct CosmicCalculator {
     core: Core,
     about: About,
     context_page: ContextPage,
@@ -35,7 +42,7 @@ pub struct Calculator {
     modifiers: Modifiers,
     config_handler: Option<cosmic_config::Config>,
     config: config::CalculatorConfig,
-    calculation: Calculation,
+    calculator: Calculator,
     toasts: widget::Toasts<Message>,
 }
 
@@ -54,6 +61,9 @@ pub enum Message {
     ShowToast(String),
     CloseToast(ToastId),
     Open(String),
+    SetDecimalComma(bool),
+    SetOutcome(Option<String>),
+    Evaluate,
 }
 
 #[derive(Copy, Clone, Debug, Default, Eq, PartialEq)]
@@ -91,14 +101,14 @@ pub enum NavMenuAction {
 }
 
 impl menu::action::MenuAction for NavMenuAction {
-    type Message = cosmic::app::Message<Message>;
+    type Message = cosmic::Action<Message>;
 
     fn message(&self) -> Self::Message {
-        cosmic::app::Message::App(Message::NavMenuAction(*self))
+        cosmic::Action::App(Message::NavMenuAction(*self))
     }
 }
 
-impl Application for Calculator {
+impl Application for CosmicCalculator {
     type Executor = cosmic::executor::Default;
 
     type Flags = Flags;
@@ -123,10 +133,9 @@ impl Application for Calculator {
         self.nav.activate(id);
         self.nav
             .active_data()
-            .map_or(Task::none(), |data: &Calculation| {
-                self.calculation.expression = data.result.to_string().clone();
-                self.calculation.result = String::new();
-                self.calculation.display = data.expression.to_string();
+            .map_or(Task::none(), |data: &Calculator| {
+                self.calculator.expression = data.outcome.to_string();
+                self.calculator.outcome = String::new();
                 Task::none()
             })
     }
@@ -142,7 +151,7 @@ impl Application for Calculator {
 
         let about = About::default()
             .name(fl!("app-title"))
-            .icon(Self::APP_ID)
+            .icon(widget::icon::from_name(Self::APP_ID))
             .version("0.1.1")
             .author("Eduardo Flores")
             .license("GPL-3.0-only")
@@ -156,9 +165,9 @@ impl Application for Calculator {
                     "https://github.com/cosmic-utils/calculator",
                 ),
             ])
-            .developers([("Eduardo Flores", "edfloreshz@proton.me")]);
+            .developers([("Eduardo Flores", "edfloreshz@gmail.com")]);
 
-        let mut app = Calculator {
+        let mut app = CosmicCalculator {
             core,
             about,
             context_page: ContextPage::default(),
@@ -167,20 +176,24 @@ impl Application for Calculator {
             modifiers: Modifiers::empty(),
             config_handler: flags.config_handler,
             config: flags.config,
-            calculation: Calculation::new(),
+            calculator: Calculator::new(),
             toasts: widget::toaster::Toasts::new(Message::CloseToast),
         };
 
         let mut tasks = vec![];
 
         tasks.push(app.set_window_title(fl!("app-title")));
+        tasks.push(Task::perform(
+            async move { operations::uses_decimal_comma().await },
+            |decimal_comma| cosmic::Action::App(Message::SetDecimalComma(decimal_comma)),
+        ));
 
         (app, Task::batch(tasks))
     }
 
-    fn header_start(&self) -> Vec<Element<Self::Message>> {
+    fn header_start<'a>(&'a self) -> Vec<Element<'a, Self::Message>> {
         let menu_bar = menu::bar(vec![menu::Tree::with_children(
-            menu::root(fl!("view")),
+            RcElementWrapper::new(menu::root(fl!("view")).into()),
             menu::items(
                 &self.key_binds,
                 vec![
@@ -207,7 +220,7 @@ impl Application for Calculator {
     fn nav_context_menu(
         &self,
         id: nav_bar::Id,
-    ) -> Option<Vec<menu::Tree<CosmicMessage<Self::Message>>>> {
+    ) -> Option<Vec<menu::Tree<cosmic::Action<Self::Message>>>> {
         Some(cosmic::widget::menu::items(
             &HashMap::new(),
             vec![cosmic::widget::menu::Item::Button(
@@ -218,14 +231,14 @@ impl Application for Calculator {
         ))
     }
 
-    fn view(&self) -> Element<Self::Message> {
+    fn view<'a>(&'a self) -> Element<'a, Self::Message> {
         let spacing = cosmic::theme::active().cosmic().spacing;
 
         widget::column::with_capacity(2)
             .push(
-                widget::text_input("", &self.calculation.display)
+                widget::text_input("", &self.calculator.expression)
                     .on_input(Message::Input)
-                    .on_submit(Message::Operator(Operator::Equal))
+                    .on_submit(|_| Message::Operator(Operator::Equal))
                     .size(32.0)
                     .width(Length::Fill),
             )
@@ -354,46 +367,18 @@ impl Application for Calculator {
     }
 
     fn update(&mut self, message: Self::Message) -> Task<Self::Message> {
-        let mut commands = vec![];
-
-        // Helper for updating config values efficiently
-        macro_rules! config_set {
-            ($name: ident, $value: expr) => {
-                match &self.config_handler {
-                    Some(config_handler) => {
-                        match paste::paste! { self.config.[<set_ $name>](config_handler, $value) } {
-                            Ok(_) => {}
-                            Err(err) => {
-                                log::warn!(
-                                    "failed to save config {:?}: {}",
-                                    stringify!($name),
-                                    err
-                                );
-                            }
-                        }
-                    }
-                    None => {
-                        self.config.$name = $value;
-                        log::warn!(
-                            "failed to save config {:?}: no config handler",
-                            stringify!($name)
-                        );
-                    }
-                }
-            };
-        }
-
+        let mut tasks = vec![];
         match message {
             Message::Open(url) => {
                 if let Err(err) = open::that_detached(url) {
-                    log::error!("{err}")
+                    tracing::error!("{err}")
                 }
             }
             Message::ShowToast(message) => {
-                commands.push(
+                tasks.push(
                     self.toasts
                         .push(widget::toaster::Toast::new(message))
-                        .map(cosmic::app::Message::App),
+                        .map(cosmic::Action::App),
                 );
             }
             Message::CloseToast(id) => self.toasts.remove(id),
@@ -408,24 +393,50 @@ impl Application for Calculator {
             Message::ToggleContextDrawer => {
                 self.core.window.show_context = !self.core.window.show_context;
             }
-            Message::Number(num) => self.calculation.on_number_press(num),
-            Message::Input(input) => self.calculation.on_input(input),
-            Message::Operator(operator) => match self.calculation.on_operator_press(&operator) {
-                crate::app::calculation::Message::Continue => {
-                    if operator == Operator::Equal {
-                        let mut history = self.config.history.clone();
-                        history.push(self.calculation.clone());
-                        config_set!(history, history);
-                        self.nav
-                            .insert()
-                            .text(self.calculation.to_string())
-                            .data(self.calculation.clone());
-                        self.calculation.display = self.calculation.result.to_string();
-                    }
+            Message::SetDecimalComma(decimal_comma) => {
+                self.calculator.decimal_comma = decimal_comma;
+                tracing::info!("Calculator initialized");
+            }
+            Message::Number(num) => self.calculator.on_number_press(num),
+            Message::Input(input) => self.calculator.on_input(input),
+            Message::Operator(operator) => {
+                if let Some(operations::Message::Evaluate) =
+                    self.calculator.on_operator_press(&operator)
+                {
+                    tasks.push(self.update(Message::Evaluate));
                 }
-                crate::app::calculation::Message::Error(message) => {
-                    let command = self.update(Message::ShowToast(message));
-                    commands.push(command);
+            }
+            Message::Evaluate => {
+                let expression = self.calculator.expression.trim().to_string();
+                let calculator = self.calculator.clone();
+                tasks.push(Task::perform(
+                    async move {
+                        operations::evaluate(&expression, calculator.decimal_comma).await
+                    },
+                    |outcome| cosmic::Action::App(Message::SetOutcome(outcome)),
+                ));
+            }
+            Message::SetOutcome(outcome) => match outcome {
+                Some(outcome) => {
+                    let outcome = operations::extract_value(&outcome);
+                    self.calculator.outcome = outcome.to_string();
+                    let mut history = self.config.history.clone();
+                    history.push(self.calculator.clone());
+                    if let Some(config_handler) = &self.config_handler
+                        && let Err(err) = self.config.set_history(config_handler, history)
+                    {
+                        tracing::error!("Failed to save history: {}", err);
+                    }
+                    self.nav
+                        .insert()
+                        .text(self.calculator.expression.clone())
+                        .data(self.calculator.clone());
+                    self.calculator.expression = outcome.to_string();
+                }
+                None => {
+                    tracing::info!("No outcome");
+                    let command = self.update(Message::ShowToast("No outcome".to_string()));
+                    tasks.push(command);
                 }
             },
             Message::Key(modifiers, key) => {
@@ -440,10 +451,14 @@ impl Application for Calculator {
             }
             Message::NavMenuAction(action) => match action {
                 NavMenuAction::Delete(entity) => {
-                    if let Some(data) = self.nav.data::<Calculation>(entity).cloned() {
+                    if let Some(data) = self.nav.data::<Calculator>(entity).cloned() {
                         let mut history = self.config.history.clone();
                         history.retain(|calc| calc != &data);
-                        config_set!(history, history);
+                        if let Some(config_handler) = &self.config_handler
+                            && let Err(err) = self.config.set_history(config_handler, history)
+                        {
+                            tracing::error!("Failed to save history: {}", err);
+                        }
                         self.nav.remove(entity);
                     }
                 }
@@ -452,14 +467,18 @@ impl Application for Calculator {
                 return self.update_config();
             }
             Message::CleanHistory => {
-                config_set!(history, vec![]);
+                if let Some(config_handler) = &self.config_handler
+                    && let Err(err) = self.config.set_history(config_handler, vec![])
+                {
+                    tracing::error!("Failed to save history: {}", err);
+                }
                 self.nav.clear();
             }
         }
-        Task::batch(commands)
+        Task::batch(tasks)
     }
 
-    fn context_drawer(&self) -> Option<context_drawer::ContextDrawer<Self::Message>> {
+    fn context_drawer<'a>(&'a self) -> Option<context_drawer::ContextDrawer<'a, Self::Message>> {
         if !self.core.window.show_context {
             return None;
         }
@@ -493,7 +512,7 @@ impl Application for Calculator {
             )
             .map(|update: Update<ThemeMode>| {
                 if !update.errors.is_empty() {
-                    log::info!(
+                    tracing::info!(
                         "errors loading config {:?}: {:?}",
                         update.keys,
                         update.errors
@@ -508,7 +527,7 @@ impl Application for Calculator {
             )
             .map(|update: Update<ThemeMode>| {
                 if !update.errors.is_empty() {
-                    log::info!(
+                    tracing::info!(
                         "errors loading theme mode {:?}: {:?}",
                         update.keys,
                         update.errors
@@ -522,9 +541,9 @@ impl Application for Calculator {
     }
 }
 
-impl Calculator {
+impl CosmicCalculator {
     fn update_config(&mut self) -> Task<Message> {
-        app::command::set_theme(self.config.app_theme.theme())
+        cosmic::command::set_theme(self.config.app_theme.theme())
     }
 }
 
