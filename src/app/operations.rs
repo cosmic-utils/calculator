@@ -90,8 +90,7 @@ pub async fn evaluate(expression: &str, decimal_comma: bool) -> Option<String> {
         command.args(["-set", "decimal comma off"]);
     }
 
-    #[cfg(target_os = "macos")]
-    command.args(["-set", "autocalc false"]);
+    command.args(["-set", "autocalc on"]);
 
     let spawn = command
         .env("LANG", "C")
