@@ -1,6 +1,6 @@
 <div align="center">
   <br>
-  <img src="res/icons/hicolor/scalable/apps/icon.svg" width="150" />
+  <img src="res/icons/hicolor/scalable/apps/dev.edfloreshz.Calculator.svg" width="150" />
   <h1>Calculator</h1>
 
   <p>A simple calculator for the COSMIC™ desktop</p>
