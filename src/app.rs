@@ -431,7 +431,15 @@ impl Application for CosmicCalculator {
                     return Task::batch(tasks);
                 };
 
-                let Ok(outcome) = String::from_utf8(output.stdout) else {
+                let error = String::from_utf8(output.stderr).unwrap_or_default();
+                if !error.is_empty() {
+                    tracing::error!("An error ocurred: {}", error);
+                    tasks.push(self.update(Message::ShowToast("An error ocurred".to_string())));
+                    return Task::batch(tasks);
+                }
+
+                let outcome = String::from_utf8(output.stdout).unwrap_or_default();
+                if outcome.is_empty() {
                     tracing::error!("Failed to parse qalc output");
                     tasks.push(self.update(Message::ShowToast(
                         "Failed to parse qalc output".to_string(),
