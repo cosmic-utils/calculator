@@ -2,6 +2,7 @@
 
 use std::any::TypeId;
 use std::collections::HashMap;
+use std::process::Command;
 
 use crate::app::{config::CONFIG_VERSION, operations::Calculator, operator::Operator};
 use crate::core::{icons, key_binds::key_binds};
@@ -62,7 +63,6 @@ pub enum Message {
     CloseToast(ToastId),
     Open(String),
     SetDecimalComma(bool),
-    SetOutcome(Option<String>),
     Evaluate,
 }
 
@@ -407,39 +407,58 @@ impl Application for CosmicCalculator {
                 }
             }
             Message::Evaluate => {
-                let expression = self.calculator.expression.trim().to_string();
-                let calculator = self.calculator.clone();
-                tasks.push(Task::perform(
-                    async move {
-                        operations::evaluate(&expression, calculator.decimal_comma).await
-                    },
-                    |outcome| cosmic::Action::App(Message::SetOutcome(outcome)),
-                ));
+                let mut command = Command::new("qalc");
+                command.args(["-u8"]);
+                command.args(["-set", "maxdeci 9"]);
+
+                if self.calculator.decimal_comma {
+                    command.args(["-set", "decimal comma on"]);
+                } else {
+                    command.args(["-set", "decimal comma off"]);
+                }
+
+                if operations::autocalc() {
+                    command.args(["-set", "autocalc off"]);
+                }
+
+                command.args([&self.calculator.expression.trim().to_string()]);
+
+                let Ok(output) = command.env("LANG", "C").output() else {
+                    tracing::error!("Failed to execute qalc command");
+                    tasks.push(self.update(Message::ShowToast(
+                        "Failed to execute qalc command".to_string(),
+                    )));
+                    return Task::batch(tasks);
+                };
+
+                let Ok(outcome) = String::from_utf8(output.stdout) else {
+                    tracing::error!("Failed to parse qalc output");
+                    tasks.push(self.update(Message::ShowToast(
+                        "Failed to parse qalc output".to_string(),
+                    )));
+                    return Task::batch(tasks);
+                };
+
+                let outcome = operations::extract_value(&outcome);
+
+                self.calculator.outcome = outcome.to_string();
+                let mut history = self.config.history.clone();
+                history.push(self.calculator.clone());
+                if let Some(config_handler) = &self.config_handler
+                    && let Err(err) = self.config.set_history(config_handler, history)
+                {
+                    tracing::error!("Failed to save history: {}", err);
+                    tasks.push(
+                        self.update(Message::ShowToast("Failed to save history".to_string())),
+                    );
+                }
+                self.nav
+                    .insert()
+                    .text(self.calculator.expression.clone())
+                    .data(self.calculator.clone());
+
+                self.calculator.expression = outcome.to_string();
             }
-            Message::SetOutcome(outcome) => match outcome {
-                Some(outcome) => {
-                    tracing::info!("Raw outcome: {}", outcome);
-                    let outcome = operations::extract_value(&outcome);
-                    self.calculator.outcome = outcome.to_string();
-                    let mut history = self.config.history.clone();
-                    history.push(self.calculator.clone());
-                    if let Some(config_handler) = &self.config_handler
-                        && let Err(err) = self.config.set_history(config_handler, history)
-                    {
-                        tracing::error!("Failed to save history: {}", err);
-                    }
-                    self.nav
-                        .insert()
-                        .text(self.calculator.expression.clone())
-                        .data(self.calculator.clone());
-                    self.calculator.expression = outcome.to_string();
-                }
-                None => {
-                    tracing::info!("No outcome");
-                    let command = self.update(Message::ShowToast("No outcome".to_string()));
-                    tasks.push(command);
-                }
-            },
             Message::Key(modifiers, key) => {
                 for (key_bind, action) in &self.key_binds {
                     if key_bind.matches(modifiers, &key) {
@@ -450,20 +469,25 @@ impl Application for CosmicCalculator {
             Message::Modifiers(modifiers) => {
                 self.modifiers = modifiers;
             }
-            Message::NavMenuAction(action) => match action {
-                NavMenuAction::Delete(entity) => {
-                    if let Some(data) = self.nav.data::<Calculator>(entity).cloned() {
-                        let mut history = self.config.history.clone();
-                        history.retain(|calc| calc != &data);
-                        if let Some(config_handler) = &self.config_handler
-                            && let Err(err) = self.config.set_history(config_handler, history)
-                        {
-                            tracing::error!("Failed to save history: {}", err);
+            Message::NavMenuAction(action) => {
+                match action {
+                    NavMenuAction::Delete(entity) => {
+                        if let Some(data) = self.nav.data::<Calculator>(entity).cloned() {
+                            let mut history = self.config.history.clone();
+                            history.retain(|calc| calc != &data);
+                            if let Some(config_handler) = &self.config_handler
+                                && let Err(err) = self.config.set_history(config_handler, history)
+                            {
+                                tracing::error!("Failed to save history: {}", err);
+                                tasks.push(self.update(Message::ShowToast(
+                                    "Failed to save history".to_string(),
+                                )));
+                            }
+                            self.nav.remove(entity);
                         }
-                        self.nav.remove(entity);
                     }
                 }
-            },
+            }
             Message::SystemThemeModeChange => {
                 return self.update_config();
             }
@@ -472,6 +496,9 @@ impl Application for CosmicCalculator {
                     && let Err(err) = self.config.set_history(config_handler, vec![])
                 {
                     tracing::error!("Failed to save history: {}", err);
+                    tasks.push(
+                        self.update(Message::ShowToast("Failed to save history".to_string())),
+                    );
                 }
                 self.nav.clear();
             }

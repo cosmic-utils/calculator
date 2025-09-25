@@ -7,7 +7,6 @@ license = "GPL-3.0"
 [dependencies]
 i18n-embed-fl = "0.8"
 open = "5.3.0"
-regex = "1.11.2"
 rust-embed = "8.3.0"
 semver = "1.0.27"
 serde = { version = "1.0.208", features = ["derive"] }
@@ -22,10 +21,6 @@ features = ["tokio", "winit", "about"]
 [dependencies.i18n-embed]
 version = "0.14"
 features = ["fluent-system", "desktop-requester"]
-
-[dependencies.tokio]
-version = "1.47.1"
-features = ["fs", "io-std", "io-util", "macros", "process", "rt"]
 
 [patch."https://github.com/smithay/client-toolkit.git"]
 sctk = { package = "smithay-client-toolkit", version = "=0.19.2" }

@@ -1028,11 +1028,9 @@ dependencies = [
  "i18n-embed-fl 0.8.0",
  "libcosmic",
  "open",
- "regex",
  "rust-embed",
  "semver",
  "serde",
- "tokio",
  "tracing",
  "tracing-subscriber",
 ]
