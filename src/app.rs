@@ -430,6 +430,7 @@ impl Application for CosmicCalculator {
             }
             Message::Evaluate => {
                 let mut command = Command::new("qalc");
+                command.args(["-t"]);
                 command.args(["-u8"]);
                 command.args(["-set", "maxdeci 9"]);
 
@@ -469,9 +470,8 @@ impl Application for CosmicCalculator {
                     return Task::batch(tasks);
                 };
 
-                let outcome = operations::extract_value(&outcome);
-
                 self.calculator.outcome = outcome.to_string();
+                
                 let mut history = self.config.history.clone();
                 history.push(self.calculator.clone());
                 if let Some(config_handler) = &self.config_handler
