@@ -106,16 +106,6 @@ pub async fn uses_decimal_comma() -> bool {
     false
 }
 
-/// Extracts the value from an outcome expression.
-pub fn extract_value(expression: &str) -> &str {
-    expression
-        .rfind('=')
-        .map(|p| p + 1)
-        .or_else(|| expression.rfind('≈').map(|p| p + 3))
-        .map(|pos| expression[pos..].trim())
-        .unwrap_or(expression)
-}
-
 pub fn autocalc() -> bool {
     let min_version = Version::parse("5.4.0").unwrap();
     qalc_version()
