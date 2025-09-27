@@ -44,6 +44,10 @@ impl Calculator {
             Operator::Divide => self.add_operator(Operator::Divide),
             Operator::Modulus => self.add_operator(Operator::Modulus),
             Operator::Point => self.add_operator(Operator::Point),
+            Operator::ParenthesesOpen => self.add_operator(Operator::ParenthesesOpen),
+            Operator::ParenthesesClose => self.add_operator(Operator::ParenthesesClose),
+            Operator::Power => self.add_operator(Operator::Power),
+            Operator::SquareRoot => self.add_operator(Operator::SquareRoot),
             Operator::Clear => self.clear(),
             Operator::Equal => return Some(Message::Evaluate),
             Operator::Backspace => {

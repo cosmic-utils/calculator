@@ -243,7 +243,7 @@ impl Application for CosmicCalculator {
                     .width(Length::Fill),
             )
             .push(
-                widget::column::with_capacity(5)
+                widget::column::with_capacity(6)
                     .push(
                         widget::row::with_capacity(3)
                             .push(wide_button(
@@ -261,6 +261,28 @@ impl Application for CosmicCalculator {
                             .width(Length::Fill)
                             .height(Length::Fill)
                             .spacing(spacing.space_xs),
+                    )
+                    .push(
+                        widget::row::with_capacity(4)
+                        .push(standard_button(
+                            Message::Operator(Operator::ParenthesesOpen),
+                            Length::FillPortion(1),
+                        ))
+                        .push(standard_button(
+                            Message::Operator(Operator::ParenthesesClose),
+                            Length::FillPortion(1),
+                        ))
+                        .push(standard_button(
+                            Message::Operator(Operator::SquareRoot),
+                            Length::FillPortion(1),
+                        ))
+                        .push(suggested_button(
+                            Message::Operator(Operator::Power),
+                            Length::FillPortion(1),
+                        ))
+                        .width(Length::Fill)
+                        .height(Length::Fill)
+                        .spacing(spacing.space_xs),
                     )
                     .push(
                         widget::row::with_capacity(4)

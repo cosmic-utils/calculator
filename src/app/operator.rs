@@ -9,6 +9,10 @@ pub enum Operator {
     Equal,
     Clear,
     Backspace,
+    ParenthesesOpen,
+    ParenthesesClose,
+    Power,
+    SquareRoot,
 }
 
 impl Operator {
@@ -21,6 +25,10 @@ impl Operator {
             Self::Modulus => "%",
             Self::Point => ".",
             Self::Equal => "=",
+            Self::ParenthesesOpen => "(",
+            Self::ParenthesesClose => ")",
+            Self::Power => "^",
+            Self::SquareRoot => "√",
             Self::Clear => "C",
             Self::Backspace => "⌫",
         }
@@ -35,6 +43,10 @@ impl Operator {
             Self::Modulus => "%",
             Self::Point => ".",
             Self::Equal => "=",
+            Self::ParenthesesOpen => "(",
+            Self::ParenthesesClose => ")",
+            Self::Power => "^",
+            Self::SquareRoot => "√",
             Self::Clear => "C",
             Self::Backspace => "⌫",
         }
