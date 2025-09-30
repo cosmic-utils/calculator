@@ -1,5 +1,6 @@
 [Desktop Entry]
 Name=Calculator
+Name[cs]=Kalkulačka
 Name[pl]=Kalkulator
 Name[pt]=Calculadora
 Name[es]=Calculadora
@@ -10,4 +11,5 @@ StartupNotify=true
 Icon=dev.edfloreshz.Calculator
 Categories=COSMIC;Utility;
 Keywords=Folder;Manager;
+Keywords[cs]=výpočty;spočítat;
 MimeType=
