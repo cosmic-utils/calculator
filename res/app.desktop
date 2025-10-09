@@ -1,5 +1,6 @@
 [Desktop Entry]
 Name=Calculator
+Name[pl]=Kalkulator
 Name[pt]=Calculadora
 Name[es]=Calculadora
 Exec=cosmic-ext-calculator %F
