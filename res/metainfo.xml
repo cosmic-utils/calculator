@@ -16,7 +16,9 @@
   <url type="contribute">https://github.com/cosmic-utils/calculator</url>
   <url type="translate">https://github.com/cosmic-utils/calculator/tree/main/i18n</url>
   <name>Calculator</name>
+  <name xml:lang="pl">Kalkulator</name>
   <summary>Beyond the equation</summary>
+  <summary xml:lang="pl">Niezrównany</summary>
   <description>
     <p>A calculator app with infinite possibilities</p>
     <ul>
