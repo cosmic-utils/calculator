@@ -264,25 +264,25 @@ impl Application for CosmicCalculator {
                     )
                     .push(
                         widget::row::with_capacity(4)
-                        .push(standard_button(
-                            Message::Operator(Operator::ParenthesesOpen),
-                            Length::FillPortion(1),
-                        ))
-                        .push(standard_button(
-                            Message::Operator(Operator::ParenthesesClose),
-                            Length::FillPortion(1),
-                        ))
-                        .push(standard_button(
-                            Message::Operator(Operator::SquareRoot),
-                            Length::FillPortion(1),
-                        ))
-                        .push(suggested_button(
-                            Message::Operator(Operator::Power),
-                            Length::FillPortion(1),
-                        ))
-                        .width(Length::Fill)
-                        .height(Length::Fill)
-                        .spacing(spacing.space_xs),
+                            .push(standard_button(
+                                Message::Operator(Operator::ParenthesesOpen),
+                                Length::FillPortion(1),
+                            ))
+                            .push(standard_button(
+                                Message::Operator(Operator::ParenthesesClose),
+                                Length::FillPortion(1),
+                            ))
+                            .push(standard_button(
+                                Message::Operator(Operator::SquareRoot),
+                                Length::FillPortion(1),
+                            ))
+                            .push(suggested_button(
+                                Message::Operator(Operator::Power),
+                                Length::FillPortion(1),
+                            ))
+                            .width(Length::Fill)
+                            .height(Length::Fill)
+                            .spacing(spacing.space_xs),
                     )
                     .push(
                         widget::row::with_capacity(4)
@@ -471,7 +471,7 @@ impl Application for CosmicCalculator {
                 };
 
                 self.calculator.outcome = outcome.to_string();
-                
+
                 let mut history = self.config.history.clone();
                 history.push(self.calculator.clone());
                 if let Some(config_handler) = &self.config_handler
@@ -542,9 +542,11 @@ impl Application for CosmicCalculator {
         }
 
         Some(match self.context_page {
-            ContextPage::About => {
-                context_drawer::about(&self.about, Message::Open, Message::ToggleContextDrawer)
-            }
+            ContextPage::About => context_drawer::about(
+                &self.about,
+                |url| Message::Open(url.to_string()),
+                Message::ToggleContextDrawer,
+            ),
         })
     }
 
