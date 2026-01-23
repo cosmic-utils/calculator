@@ -18,9 +18,11 @@
   <name>Calculator</name>
   <name xml:lang="cs">Kalkulačka</name>
   <name xml:lang="pl">Kalkulator</name>
+  <name xml:lang="hu">Számológép</name>
   <summary>Beyond the equation</summary>
   <summary xml:lang="cs">Za hranicí výpočtu</summary>
   <summary xml:lang="pl">Niezrównany</summary>
+  <summary xml:lang="hu">A számításon túl</summary>
   <description>
     <p>A calculator app with infinite possibilities</p>
     <p xml:lang="cs">Kalkulačka s nekonečnými možnostmi</p>
