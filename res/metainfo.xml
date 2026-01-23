@@ -26,9 +26,11 @@
   <description>
     <p>A calculator app with infinite possibilities</p>
     <p xml:lang="cs">Kalkulačka s nekonečnými možnostmi</p>
+    <p xml:lang="hu">Számológép alkalmazás végtelen lehetőségekkel</p>
     <ul>
         <li>Exceptional performance and responsiveness.</li>
         <li xml:lang="cs">Výjimečný výkon a rychlá odezva.</li>
+        <li xml:lang="hu">Kiemelkedő teljesítmény és gyors reakcióidő.</li>
     </ul>
   </description>
   <branding>
