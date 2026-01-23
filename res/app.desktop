@@ -4,6 +4,7 @@ Name[cs]=Kalkulačka
 Name[pl]=Kalkulator
 Name[pt]=Calculadora
 Name[es]=Calculadora
+Name[hu]=Számológép
 Exec=cosmic-ext-calculator %F
 Terminal=false
 Type=Application
