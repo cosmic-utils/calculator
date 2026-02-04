@@ -45,6 +45,7 @@ pub struct CosmicCalculator {
     config: config::CalculatorConfig,
     calculator: Calculator,
     toasts: widget::Toasts<Message>,
+    input_id: widget::Id,
 }
 
 #[derive(Debug, Clone)]
@@ -178,11 +179,13 @@ impl Application for CosmicCalculator {
             config: flags.config,
             calculator: Calculator::new(),
             toasts: widget::toaster::Toasts::new(Message::CloseToast),
+            input_id: widget::Id::unique(),
         };
 
         let mut tasks = vec![];
 
         tasks.push(app.set_window_title(fl!("app-title")));
+        tasks.push(widget::text_input::focus(app.input_id.clone()));
         tasks.push(Task::perform(
             async move { operations::uses_decimal_comma().await },
             |decimal_comma| cosmic::Action::App(Message::SetDecimalComma(decimal_comma)),
@@ -239,6 +242,7 @@ impl Application for CosmicCalculator {
                 widget::text_input("", &self.calculator.expression)
                     .on_input(Message::Input)
                     .on_submit(|_| Message::Operator(Operator::Equal))
+                    .id(self.input_id.clone())
                     .size(32.0)
                     .width(Length::Fill),
             )
