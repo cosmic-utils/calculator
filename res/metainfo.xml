@@ -16,20 +16,32 @@
   <url type="contribute">https://github.com/cosmic-utils/calculator</url>
   <url type="translate">https://github.com/cosmic-utils/calculator/tree/main/i18n</url>
   <name>Calculator</name>
+  <name xml:lang="bg">Калкулатор</name>
   <name xml:lang="cs">Kalkulačka</name>
-  <name xml:lang="pl">Kalkulator</name>
+  <name xml:lang="en">Calculator</name>
+  <name xml:lang="es">Calculadora</name>
+  <name xml:lang="fr">Calculatrice</name>
   <name xml:lang="hu">Számológép</name>
+  <name xml:lang="it">Calculator</name>
+  <name xml:lang="nl">Rekenmachine</name>
+  <name xml:lang="pl">Kalkulator</name>
+  <name xml:lang="pt">Calculadora</name>
+  <name xml:lang="ro">Calculator</name>
+  <name xml:lang="sv">Kalkylator</name>
   <summary>Beyond the equation</summary>
   <summary xml:lang="cs">Za hranicí výpočtu</summary>
-  <summary xml:lang="pl">Niezrównany</summary>
+  <summary xml:lang="fr">Au-delà de l'équation</summary>
   <summary xml:lang="hu">A számításon túl</summary>
+  <summary xml:lang="pl">Niezrównany</summary>
   <description>
     <p>A calculator app with infinite possibilities</p>
     <p xml:lang="cs">Kalkulačka s nekonečnými možnostmi</p>
+    <p xml:lang="fr">Calculatrice aux possibilités infinies</p>
     <p xml:lang="hu">Számológép alkalmazás végtelen lehetőségekkel</p>
     <ul>
         <li>Exceptional performance and responsiveness.</li>
         <li xml:lang="cs">Výjimečný výkon a rychlá odezva.</li>
+        <li xml:lang="fr">Performances et réactivité exceptionnelles.</li>
         <li xml:lang="hu">Kiemelkedő teljesítmény és gyors reakcióidő.</li>
     </ul>
   </description>

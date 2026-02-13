@@ -1,10 +1,17 @@
 [Desktop Entry]
 Name=Calculator
+Name[bg]=Калкулатор
 Name[cs]=Kalkulačka
+Name[en]=Calculator
+Name[es]=Calculadora
+Name[fr]=Calculatrice
+Name[hu]=Számológép
+Name[it]=Calculator
+Name[nl]=Rekenmachine
 Name[pl]=Kalkulator
 Name[pt]=Calculadora
-Name[es]=Calculadora
-Name[hu]=Számológép
+Name[ro]=Calculator
+Name[sv]=Kalkylator
 Exec=cosmic-ext-calculator %F
 Terminal=false
 Type=Application
