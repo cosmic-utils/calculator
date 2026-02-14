@@ -19,18 +19,22 @@
   <name xml:lang="cs">Kalkulačka</name>
   <name xml:lang="pl">Kalkulator</name>
   <name xml:lang="hu">Számológép</name>
+  <name xml:lang="uk">Калькулятор</name>
   <summary>Beyond the equation</summary>
   <summary xml:lang="cs">Za hranicí výpočtu</summary>
   <summary xml:lang="pl">Niezrównany</summary>
   <summary xml:lang="hu">A számításon túl</summary>
+  <summary xml:lang="uk">Більше, ніж обчислення</summary>
   <description>
     <p>A calculator app with infinite possibilities</p>
     <p xml:lang="cs">Kalkulačka s nekonečnými možnostmi</p>
     <p xml:lang="hu">Számológép alkalmazás végtelen lehetőségekkel</p>
+    <p xml:lang="uk">Простий калькулятор для щоденного використання</p>
     <ul>
         <li>Exceptional performance and responsiveness.</li>
         <li xml:lang="cs">Výjimečný výkon a rychlá odezva.</li>
         <li xml:lang="hu">Kiemelkedő teljesítmény és gyors reakcióidő.</li>
+        <li xml:lang="uk">Швидкий і зручний у використанні.</li>
     </ul>
   </description>
   <branding>
@@ -73,11 +77,13 @@
       <image>
         https://raw.githubusercontent.com/cosmic-utils/calculator/main/res/screenshots/window-light.png</image>
       <caption>Light mode</caption>
+      <caption xml:lang="uk">Світла тема</caption>
     </screenshot>
     <screenshot>
       <image>
         https://raw.githubusercontent.com/cosmic-utils/calculator/main/res/screenshots/window-dark.png</image>
       <caption>Dark mode</caption>
+      <caption xml:lang="uk">Темна тема</caption>
     </screenshot>
   </screenshots>
   <categories>
