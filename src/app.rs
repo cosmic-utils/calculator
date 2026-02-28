@@ -1,8 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
-use std::any::TypeId;
-use std::collections::HashMap;
-
 use crate::app::{calculation::Calculation, config::CONFIG_VERSION, operator::Operator};
 use crate::core::icons;
 use crate::core::key_binds::key_binds;
@@ -19,8 +16,10 @@ use cosmic::iced::{
 };
 use cosmic::widget::about::About;
 use cosmic::widget::menu::{Action, ItemHeight, ItemWidth};
-use cosmic::widget::{self, container, dropdown, menu, nav_bar, ToastId};
+use cosmic::widget::{self, menu, nav_bar, ToastId};
 use cosmic::{cosmic_config, cosmic_theme, theme, Application, ApplicationExt, Element};
+use std::any::TypeId;
+use std::collections::HashMap;
 
 mod calculation;
 mod config;
@@ -222,129 +221,121 @@ impl Application for Calculator {
     fn view(&self) -> Element<Self::Message> {
         let spacing = cosmic::theme::active().cosmic().spacing;
 
-        container(
-            widget::column::with_capacity(3)
-                .push(
-                    widget::row::row()
-                        .push(widget::toaster(&self.toasts, widget::vertical_space())),
-                )
-                .push(
-                    widget::text_input("", &self.calculation.display)
-                        .on_input(Message::Input)
-                        .on_submit(Message::Operator(Operator::Equal))
-                        .size(32.0)
-                        .width(Length::Fill),
-                )
-                .push(
-                    widget::row::with_capacity(5)
-                        .push(
-                            widget::column::with_capacity(5)
-                                .push(standard_button(
-                                    Message::Operator(Operator::Clear),
-                                    Length::FillPortion(1),
-                                ))
-                                .push(suggested_button(Message::Number(7), Length::FillPortion(1)))
-                                .push(suggested_button(Message::Number(4), Length::FillPortion(1)))
-                                .push(suggested_button(Message::Number(1), Length::FillPortion(1)))
-                                .push(suggested_button(Message::Number(0), Length::FillPortion(1)))
-                                .width(Length::Fill)
-                                .height(Length::Fill)
-                                .spacing(spacing.space_xxxs),
-                        )
-                        .push(
-                            widget::column::with_capacity(5)
-                                .push(standard_button(
-                                    Message::Operator(Operator::StartGroup),
-                                    Length::FillPortion(1),
-                                ))
-                                .push(suggested_button(Message::Number(8), Length::FillPortion(1)))
-                                .push(suggested_button(Message::Number(5), Length::FillPortion(1)))
-                                .push(suggested_button(Message::Number(2), Length::FillPortion(1)))
-                                .push(standard_button(
-                                    Message::Operator(Operator::Point),
-                                    Length::FillPortion(1),
-                                ))
-                                .width(Length::Fill)
-                                .height(Length::Fill)
-                                .spacing(spacing.space_xxxs),
-                        )
-                        .push(
-                            widget::column::with_capacity(5)
-                                .push(standard_button(
-                                    Message::Operator(Operator::EndGroup),
-                                    Length::FillPortion(1),
-                                ))
-                                .push(suggested_button(Message::Number(9), Length::FillPortion(1)))
-                                .push(suggested_button(Message::Number(6), Length::FillPortion(1)))
-                                .push(suggested_button(Message::Number(3), Length::FillPortion(1)))
-                                .push(standard_button(
-                                    Message::Operator(Operator::Percentage),
-                                    Length::FillPortion(1),
-                                ))
-                                .width(Length::Fill)
-                                .height(Length::Fill)
-                                .spacing(spacing.space_xxxs),
-                        )
-                        .push(
-                            widget::column::with_capacity(5)
-                                .push(standard_button(
-                                    Message::Operator(Operator::Modulus),
-                                    Length::FillPortion(1),
-                                ))
-                                .push(standard_button(
-                                    Message::Operator(Operator::Divide),
-                                    Length::FillPortion(1),
-                                ))
-                                .push(standard_button(
-                                    Message::Operator(Operator::Multiply),
-                                    Length::FillPortion(1),
-                                ))
-                                .push(standard_button(
-                                    Message::Operator(Operator::Subtract),
-                                    Length::FillPortion(1),
-                                ))
-                                .push(standard_button(
-                                    Message::Operator(Operator::Add),
-                                    Length::FillPortion(1),
-                                ))
-                                .width(Length::Fill)
-                                .height(Length::Fill)
-                                .spacing(spacing.space_xxxs),
-                        )
-                        .push(
-                            widget::column::with_capacity(5)
-                                .push(standard_button(
-                                    Message::Operator(Operator::Pi),
-                                    Length::FillPortion(1),
-                                ))
-                                .push(standard_button(
-                                    Message::Operator(Operator::Root),
-                                    Length::FillPortion(1),
-                                ))
-                                .push(standard_button(
-                                    Message::Operator(Operator::Square),
-                                    Length::FillPortion(1),
-                                ))
-                                .push(suggested_button(
-                                    Message::Operator(Operator::Equal),
-                                    Length::FillPortion(2),
-                                ))
-                                .width(Length::Fill)
-                                .height(Length::Fill)
-                                .spacing(spacing.space_xxxs),
-                        )
-                        .width(Length::Fill)
-                        .height(Length::Fixed(200.0))
-                        .align_y(Alignment::Center)
-                        .spacing(spacing.space_none),
-                )
-                .align_x(Alignment::Center)
-                .spacing(spacing.space_l)
-                .padding(spacing.space_xxs)
-                .width(Length::Fixed(700.0)), // .into()
-        )
-        .center(Length::Fill)
-        .into()
+        widget::column::with_capacity(2)
+            .push(
+                widget::text_input("", &self.calculation.display)
+                    .on_input(Message::Input)
+                    .on_submit(Message::Operator(Operator::Equal))
+                    .size(32.0)
+                    .width(Length::Fill),
+            )
+            .push(
+                widget::row::with_capacity(5)
+                    .push(
+                        widget::column::with_capacity(5)
+                            .push(standard_button(
+                                Message::Operator(Operator::Clear),
+                                Length::FillPortion(1),
+                            ))
+                            .push(suggested_button(Message::Number(7), Length::FillPortion(1)))
+                            .push(suggested_button(Message::Number(4), Length::FillPortion(1)))
+                            .push(suggested_button(Message::Number(1), Length::FillPortion(1)))
+                            .push(suggested_button(Message::Number(0), Length::FillPortion(1)))
+                            .width(Length::Fill)
+                            .height(Length::Fill)
+                            .spacing(spacing.space_xxxs),
+                    )
+                    .push(
+                        widget::column::with_capacity(5)
+                            .push(standard_button(
+                                Message::Operator(Operator::StartGroup),
+                                Length::FillPortion(1),
+                            ))
+                            .push(suggested_button(Message::Number(8), Length::FillPortion(1)))
+                            .push(suggested_button(Message::Number(5), Length::FillPortion(1)))
+                            .push(suggested_button(Message::Number(2), Length::FillPortion(1)))
+                            .push(standard_button(
+                                Message::Operator(Operator::Point),
+                                Length::FillPortion(1),
+                            ))
+                            .width(Length::Fill)
+                            .height(Length::Fill)
+                            .spacing(spacing.space_xxxs),
+                    )
+                    .push(
+                        widget::column::with_capacity(5)
+                            .push(standard_button(
+                                Message::Operator(Operator::EndGroup),
+                                Length::FillPortion(1),
+                            ))
+                            .push(suggested_button(Message::Number(9), Length::FillPortion(1)))
+                            .push(suggested_button(Message::Number(6), Length::FillPortion(1)))
+                            .push(suggested_button(Message::Number(3), Length::FillPortion(1)))
+                            .push(standard_button(
+                                Message::Operator(Operator::Percentage),
+                                Length::FillPortion(1),
+                            ))
+                            .width(Length::Fill)
+                            .height(Length::Fill)
+                            .spacing(spacing.space_xxxs),
+                    )
+                    .push(
+                        widget::column::with_capacity(5)
+                            .push(standard_button(
+                                Message::Operator(Operator::Modulus),
+                                Length::FillPortion(1),
+                            ))
+                            .push(standard_button(
+                                Message::Operator(Operator::Divide),
+                                Length::FillPortion(1),
+                            ))
+                            .push(standard_button(
+                                Message::Operator(Operator::Multiply),
+                                Length::FillPortion(1),
+                            ))
+                            .push(standard_button(
+                                Message::Operator(Operator::Subtract),
+                                Length::FillPortion(1),
+                            ))
+                            .push(standard_button(
+                                Message::Operator(Operator::Add),
+                                Length::FillPortion(1),
+                            ))
+                            .width(Length::Fill)
+                            .height(Length::Fill)
+                            .spacing(spacing.space_xxxs),
+                    )
+                    .push(
+                        widget::column::with_capacity(5)
+                            .push(standard_button(
+                                Message::Operator(Operator::Pi),
+                                Length::FillPortion(1),
+                            ))
+                            .push(standard_button(
+                                Message::Operator(Operator::Root),
+                                Length::FillPortion(1),
+                            ))
+                            .push(standard_button(
+                                Message::Operator(Operator::Square),
+                                Length::FillPortion(1),
+                            ))
+                            .push(suggested_button(
+                                Message::Operator(Operator::Equal),
+                                Length::FillPortion(2),
+                            ))
+                            .width(Length::Fill)
+                            .height(Length::Fill)
+                            .spacing(spacing.space_xxxs),
+                    )
+                    .width(Length::Fill)
+                    .height(Length::Fill)
+                    .align_y(Alignment::Center)
+                    .spacing(spacing.space_xs),
+            )
+            .align_x(Alignment::Center)
+            .spacing(spacing.space_xs)
+            .padding(spacing.space_xxs)
+            .into()
     }
 
     fn update(&mut self, message: Self::Message) -> Task<Self::Message> {
@@ -447,6 +438,7 @@ impl Application for Calculator {
             }
             Message::CleanHistory => {
                 config_set!(history, vec![]);
+                self.nav.clear()
             }
         }
         Task::batch(commands)
