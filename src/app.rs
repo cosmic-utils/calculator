@@ -4,10 +4,11 @@ use std::any::TypeId;
 use std::collections::HashMap;
 
 use crate::app::{calculation::Calculation, config::CONFIG_VERSION, operator::Operator};
+use crate::core::icons;
 use crate::core::key_binds::key_binds;
 use crate::fl;
 use cosmic::app::context_drawer;
-use cosmic::app::{self, Core, Task};
+use cosmic::app::{self, Core, Message as CosmicMessage, Task};
 use cosmic::cosmic_config::Update;
 use cosmic::cosmic_theme::ThemeMode;
 use cosmic::iced::{
@@ -17,8 +18,8 @@ use cosmic::iced::{
     Alignment, Event, Length, Subscription,
 };
 use cosmic::widget::about::About;
-use cosmic::widget::menu::Action;
-use cosmic::widget::{self, container, dropdown, menu, ToastId};
+use cosmic::widget::menu::{Action, ItemHeight, ItemWidth};
+use cosmic::widget::{self, container, dropdown, menu, nav_bar, ToastId};
 use cosmic::{cosmic_config, cosmic_theme, theme, Application, ApplicationExt, Element};
 
 mod calculation;
@@ -31,6 +32,7 @@ pub struct Calculator {
     about: About,
     context_page: ContextPage,
     key_binds: HashMap<menu::KeyBind, MenuAction>,
+    nav: nav_bar::Model,
     modifiers: Modifiers,
     config_handler: Option<cosmic_config::Config>,
     config: config::CalculatorConfig,
@@ -48,9 +50,8 @@ pub enum Message {
     Key(Modifiers, Key),
     Modifiers(Modifiers),
     SystemThemeModeChange,
-    DropdownAction(usize),
+    NavMenuAction(NavMenuAction),
     CleanHistory,
-    Undo,
     ShowToast(String),
     CloseToast(ToastId),
     Open(String),
@@ -72,7 +73,6 @@ pub struct Flags {
 pub enum MenuAction {
     About,
     ClearHistory,
-    Undo,
 }
 
 impl menu::action::MenuAction for MenuAction {
@@ -82,8 +82,20 @@ impl menu::action::MenuAction for MenuAction {
         match self {
             MenuAction::About => Message::ToggleContextPage(ContextPage::About),
             MenuAction::ClearHistory => Message::CleanHistory,
-            MenuAction::Undo => Message::Undo,
         }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum NavMenuAction {
+    Delete(nav_bar::Id),
+}
+
+impl menu::action::MenuAction for NavMenuAction {
+    type Message = cosmic::app::Message<Message>;
+
+    fn message(&self) -> Self::Message {
+        cosmic::app::Message::App(Message::NavMenuAction(*self))
     }
 }
 
@@ -104,14 +116,30 @@ impl Application for Calculator {
         &mut self.core
     }
 
-    fn init(core: Core, flags: Self::Flags) -> (Self, Task<Self::Message>) {
-        // let mut nav = nav_bar::Model::default();
+    fn nav_model(&self) -> Option<&nav_bar::Model> {
+        Some(&self.nav)
+    }
 
-        // for entry in &flags.config.history {
-        //     nav.insert()
-        //         .text(entry.to_string().clone())
-        //         .data(entry.clone());
-        // }
+    fn on_nav_select(&mut self, id: nav_bar::Id) -> Task<Self::Message> {
+        self.nav.activate(id);
+        self.nav
+            .active_data()
+            .map_or(Task::none(), |data: &Calculation| {
+                self.calculation.expression = data.result.to_string().clone();
+                self.calculation.result = String::new();
+                self.calculation.display = data.expression.to_string();
+                Task::none()
+            })
+    }
+
+    fn init(core: Core, flags: Self::Flags) -> (Self, Task<Self::Message>) {
+        let mut nav = nav_bar::Model::default();
+
+        for entry in &flags.config.history {
+            nav.insert()
+                .text(entry.to_string().clone())
+                .data(entry.clone());
+        }
 
         let about = About::default()
             .name(fl!("app-title"))
@@ -136,6 +164,7 @@ impl Application for Calculator {
             about,
             context_page: ContextPage::default(),
             key_binds: key_binds(),
+            nav,
             modifiers: Modifiers::empty(),
             config_handler: flags.config_handler,
             config: flags.config,
@@ -151,24 +180,43 @@ impl Application for Calculator {
     }
 
     fn header_start(&self) -> Vec<Element<Self::Message>> {
-        // let button = Button::new("Undo").class(theme::Button::Standard);
-        let but = widget::button::custom(
-            widget::container(widget::text("Undo"))
-                .center(Length::Fill)
-                .width(Length::Shrink)
-                .height(Length::Shrink),
-        )
-        .class(theme::Button::HeaderBar)
-        .width(Length::Shrink)
-        .height(Length::Shrink)
-        .on_press(Message::Undo);
+        let menu_bar = menu::bar(vec![menu::Tree::with_children(
+            menu::root(fl!("view")),
+            menu::items(
+                &self.key_binds,
+                vec![
+                    menu::Item::Button(
+                        fl!("clear-history"),
+                        Some(icons::get_handle("large-brush-symbolic", 14)),
+                        MenuAction::ClearHistory,
+                    ),
+                    menu::Item::Button(
+                        fl!("about"),
+                        Some(icons::get_handle("settings-symbolic", 14)),
+                        MenuAction::About,
+                    ),
+                ],
+            ),
+        )])
+        .item_height(ItemHeight::Dynamic(40))
+        .item_width(ItemWidth::Uniform(240))
+        .spacing(4.0);
 
-        vec![but.into()]
+        vec![menu_bar.into()]
     }
 
-    fn header_center(&self) -> Vec<Element<Self::Message>> {
-        let dropdown = dropdown(&["Basic", "Programming"], Some(0), Message::DropdownAction);
-        vec![dropdown.into()]
+    fn nav_context_menu(
+        &self,
+        id: nav_bar::Id,
+    ) -> Option<Vec<menu::Tree<CosmicMessage<Self::Message>>>> {
+        Some(cosmic::widget::menu::items(
+            &HashMap::new(),
+            vec![cosmic::widget::menu::Item::Button(
+                fl!("delete"),
+                Some(icons::get_handle("user-trash-symbolic", 14)),
+                NavMenuAction::Delete(id),
+            )],
+        ))
     }
 
     fn view(&self) -> Element<Self::Message> {
@@ -362,6 +410,10 @@ impl Application for Calculator {
                         let mut history = self.config.history.clone();
                         history.push(self.calculation.clone());
                         config_set!(history, history);
+                        self.nav
+                            .insert()
+                            .text(self.calculation.to_string())
+                            .data(self.calculation.clone());
                         self.calculation.display = self.calculation.result.to_string();
                     }
                 }
@@ -380,21 +432,21 @@ impl Application for Calculator {
             Message::Modifiers(modifiers) => {
                 self.modifiers = modifiers;
             }
-            Message::DropdownAction(id) => {}
+            Message::NavMenuAction(action) => match action {
+                NavMenuAction::Delete(entity) => {
+                    if let Some(data) = self.nav.data::<Calculation>(entity).cloned() {
+                        let mut history = self.config.history.clone();
+                        history.retain(|calc| calc != &data);
+                        config_set!(history, history);
+                        self.nav.remove(entity);
+                    }
+                }
+            },
             Message::SystemThemeModeChange => {
                 return self.update_config();
             }
             Message::CleanHistory => {
                 config_set!(history, vec![]);
-            }
-            Message::Undo => {
-                let mut last = self.config.history.clone();
-                println!("{:?}", last);
-                let prev = last.pop();
-                config_set!(history, last);
-                if let Some(v) = prev {
-                    self.calculation.display = v.expression;
-                }
             }
         }
         Task::batch(commands)
