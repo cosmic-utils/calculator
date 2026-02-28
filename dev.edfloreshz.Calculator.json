@@ -1,7 +1,10 @@
 {
+  "$schema": "https://raw.githubusercontent.com/flatpak/flatpak-builder/main/data/flatpak-manifest.schema.json",
   "id": "dev.edfloreshz.Calculator",
   "runtime": "org.freedesktop.Platform",
   "runtime-version": "24.08",
+  "base": "com.system76.Cosmic.BaseApp",
+  "base-version": "stable",
   "sdk": "org.freedesktop.Sdk",
   "sdk-extensions": [
     "org.freedesktop.Sdk.Extension.rust-stable",
@@ -14,7 +17,7 @@
     "--socket=wayland",
     "--device=dri",
     "--talk-name=com.system76.CosmicSettingsDaemon",
-    "--filesystem=xdg-config/cosmic:ro"
+    "--filesystem=xdg-config/cosmic:rw"
   ],
   "build-options": {
     "append-path": "/usr/lib/sdk/rust-stable/bin:/usr/lib/sdk/llvm18/bin",
@@ -28,12 +31,56 @@
   },
   "modules": [
     {
+      "name": "gmp",
+      "buildsystem": "autotools",
+      "sources": [
+        {
+          "type": "archive",
+          "url": "https://gmplib.org/download/gmp/gmp-6.3.0.tar.xz",
+          "sha256": "a3c2b80201b89e68616f4ad30bc66aee4927c3ce50e33929ca819d5c43538898"
+        }
+      ]
+    },
+    {
+      "name": "mpfr",
+      "buildsystem": "autotools",
+      "sources": [
+        {
+          "type": "archive",
+          "url": "https://www.mpfr.org/mpfr-4.2.1/mpfr-4.2.1.tar.xz",
+          "sha256": "277807353a6726978996945af13e52829e3abd7a9a5b7fb2793894e18f1fcbb2"
+        }
+      ]
+    },
+    {
+      "name": "intltool",
+      "buildsystem": "autotools",
+      "sources": [
+        {
+          "type": "archive",
+          "url": "https://launchpad.net/intltool/trunk/0.51.0/+download/intltool-0.51.0.tar.gz",
+          "sha256": "67c74d94196b153b774ab9f89b2fa6c6ba79352407037c8c14d5aeb334e959cd"
+        }
+      ]
+    },
+    {
+      "name": "libqalculate",
+      "buildsystem": "autotools",
+      "sources": [
+        {
+          "type": "archive",
+          "url": "https://github.com/Qalculate/libqalculate/releases/download/v5.7.0/libqalculate-5.7.0.tar.gz",
+          "sha256": "b0aa7e7f6b729ad88f41c3562e81bdc349e072f4df0e62ce152304d979702cfe"
+        }
+      ]
+    },
+    {
       "name": "calculator",
       "buildsystem": "simple",
       "build-commands": [
-        "cargo build --release --verbose",
+        "cargo --offline build --release --verbose",
         "install -Dm0755 ./target/release/cosmic-ext-calculator -t /app/bin/",
-        "install -Dm644 ./res/icons/hicolor/scalable/apps/icon.svg /app/share/icons/hicolor/scalable/apps/dev.edfloreshz.Calculator.svg",
+        "install -Dm644 ./res/icons/hicolor/scalable/apps/dev.edfloreshz.Calculator.svg /app/share/icons/hicolor/scalable/apps/dev.edfloreshz.Calculator.svg",
         "install -Dm644 ./res/metainfo.xml /app/share/metainfo/dev.edfloreshz.Calculator.metainfo.xml",
         "install -Dm644 ./res/app.desktop /app/share/applications/dev.edfloreshz.Calculator.desktop"
       ],
@@ -41,7 +88,8 @@
         {
           "type": "dir",
           "path": "./"
-        }
+        },
+        "generated-sources.json"
       ]
     }
   ]

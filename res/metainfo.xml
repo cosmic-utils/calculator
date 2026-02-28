@@ -16,11 +16,21 @@
   <url type="contribute">https://github.com/cosmic-utils/calculator</url>
   <url type="translate">https://github.com/cosmic-utils/calculator/tree/main/i18n</url>
   <name>Calculator</name>
+  <name xml:lang="cs">Kalkulačka</name>
+  <name xml:lang="pl">Kalkulator</name>
+  <name xml:lang="hu">Számológép</name>
   <summary>Beyond the equation</summary>
+  <summary xml:lang="cs">Za hranicí výpočtu</summary>
+  <summary xml:lang="pl">Niezrównany</summary>
+  <summary xml:lang="hu">A számításon túl</summary>
   <description>
     <p>A calculator app with infinite possibilities</p>
+    <p xml:lang="cs">Kalkulačka s nekonečnými možnostmi</p>
+    <p xml:lang="hu">Számológép alkalmazás végtelen lehetőségekkel</p>
     <ul>
         <li>Exceptional performance and responsiveness.</li>
+        <li xml:lang="cs">Výjimečný výkon a rychlá odezva.</li>
+        <li xml:lang="hu">Kiemelkedő teljesítmény és gyors reakcióidő.</li>
     </ul>
   </description>
   <branding>
@@ -30,6 +40,14 @@
   <icon type="remote" height="256" width="256">https://raw.githubusercontent.com/cosmic-utils/calculator/main/res/icons/hicolor/scalable/apps/icon.svg</icon>
   <launchable type="desktop-id">dev.edfloreshz.Calculator.desktop</launchable>
   <releases>
+    <release version="0.2.0" date="2025-09-24">
+        <description>
+            <p>New backend! 🚀</p>
+            <ul>
+                <li>The app is now using a new backend to handle operations</li>
+            </ul>
+        </description>
+    </release>
     <release version="0.1.1" date="2024-11-06">
         <description>
             <p>Toolkit improvements 🧰</p>

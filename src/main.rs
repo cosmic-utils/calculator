@@ -1,14 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
-use app::Calculator;
+use app::CosmicCalculator;
 mod app;
 mod core;
-mod error;
 
 use app::settings;
 
 fn main() -> cosmic::iced::Result {
     settings::init();
     let (settings, flags) = (settings::settings(), settings::flags());
-    cosmic::app::run::<Calculator>(settings, flags)
+    cosmic::app::run::<CosmicCalculator>(settings, flags)
 }
