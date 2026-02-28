@@ -246,7 +246,7 @@ impl Application for CosmicCalculator {
                 widget::column::with_capacity(6)
                     .push(
                         widget::row::with_capacity(3)
-                            .push(wide_button(
+                            .push(standard_button(
                                 Message::Operator(Operator::Clear),
                                 Length::FillPortion(2),
                             ))
@@ -605,15 +605,6 @@ impl CosmicCalculator {
     fn update_config(&mut self) -> Task<Message> {
         cosmic::command::set_theme(self.config.app_theme.theme())
     }
-}
-
-pub fn wide_button<'a>(message: Message, width: Length) -> Element<'a, Message> {
-    let label = match message.clone() {
-        Message::Number(num) => num.to_string(),
-        Message::Operator(operator) => operator.display().to_string(),
-        _ => String::new(),
-    };
-    button(label, message, theme::Button::Standard, width)
 }
 
 pub fn standard_button<'a>(message: Message, width: Length) -> Element<'a, Message> {
