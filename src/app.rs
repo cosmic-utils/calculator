@@ -19,6 +19,7 @@ use cosmic::{
         Alignment, Event, Length, Subscription, event,
         keyboard::Event as KeyEvent,
         keyboard::{Key, Modifiers},
+        window,
     },
     theme,
     widget::{
@@ -65,6 +66,7 @@ pub enum Message {
     Open(String),
     SetDecimalComma(bool),
     Evaluate,
+    Window,
 }
 
 #[derive(Copy, Clone, Debug, Default, Eq, PartialEq)]
@@ -538,6 +540,9 @@ impl Application for CosmicCalculator {
                 }
                 self.nav.clear();
             }
+            Message::Window => {
+                return widget::text_input::focus(self.input_id.clone());
+            }
         }
         Task::batch(tasks)
     }
@@ -569,6 +574,7 @@ impl Application for CosmicCalculator {
                 Event::Keyboard(KeyEvent::ModifiersChanged(modifiers)) => {
                     Some(Message::Modifiers(modifiers))
                 }
+                Event::Window(window::Event::Focused) => Some(Message::Window),
                 _ => None,
             }),
             cosmic_config::config_subscription(
