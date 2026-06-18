@@ -62,21 +62,33 @@ impl Calculator {
     }
 
     pub(crate) fn on_input(&mut self, input: String) {
+        // qalc is the real parser/sandbox and safely handles arbitrary
+        // expressions (functions, constants, units, factorials, etc.) by
+        // returning them unevaluated rather than crashing. Keep only a light
+        // guard so we don't blanket-reject useful input. Notably this now
+        // permits letters (sin, sqrt, pi, e ...), whitespace, '!' for
+        // factorials, and ',' which is required to type decimals in
+        // decimal-comma locales.
         if input.chars().all(|c| {
-            c.is_ascii_digit()
-                || c == '+'
-                || c == '-'
-                || c == '*'
-                || c == '/'
-                || c == '÷'
-                || c == '/'
-                || c == '%'
-                || c == '.'
-                || c == '('
-                || c == ')'
-                || c == '^'
-                || c == '√'
-                || c == '\u{8}'
+            c.is_alphanumeric()
+                || c.is_whitespace()
+                || matches!(
+                    c,
+                    '+' | '-'
+                        | '*'
+                        | '/'
+                        | '÷'
+                        | '×'
+                        | '%'
+                        | '.'
+                        | ','
+                        | '('
+                        | ')'
+                        | '^'
+                        | '√'
+                        | '!'
+                        | '\u{8}'
+                )
         }) {
             self.expression = input;
         }
@@ -116,5 +128,5 @@ pub fn autocalc() -> bool {
     let min_version = Version::parse("5.4.0").unwrap();
     qalc_version()
         .and_then(|version| Version::parse(&version).ok())
-        .map_or(false, |current| current >= min_version)
+        .is_some_and(|current| current >= min_version)
 }
