@@ -89,12 +89,14 @@
       <image>
         https://raw.githubusercontent.com/cosmic-utils/calculator/main/res/screenshots/window-light.png</image>
       <caption>Light mode</caption>
+      <caption xml:lang="cs">Světlý režim</caption>
       <caption xml:lang="uk">Світла тема</caption>
     </screenshot>
     <screenshot>
       <image>
         https://raw.githubusercontent.com/cosmic-utils/calculator/main/res/screenshots/window-dark.png</image>
       <caption>Dark mode</caption>
+      <caption xml:lang="cs">Tmavý režim</caption>
       <caption xml:lang="uk">Темна тема</caption>
     </screenshot>
   </screenshots>
