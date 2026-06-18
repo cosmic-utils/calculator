@@ -2,7 +2,7 @@
 
 use std::any::TypeId;
 use std::collections::HashMap;
-use std::process::Command;
+use std::process::{Command, Stdio};
 
 use crate::app::{config::CONFIG_VERSION, operations::Calculator, operator::Operator};
 use crate::core::{icons, key_binds::key_binds};
@@ -435,7 +435,16 @@ impl Application for CosmicCalculator {
                 }
             }
             Message::Evaluate => {
+                // Guard: evaluating an empty/blank expression drops qalc into
+                // interactive mode, which either hangs waiting on stdin or
+                // returns its "> " prompt as a bogus result. Do nothing here.
+                if self.calculator.expression.trim().is_empty() {
+                    return Task::batch(tasks);
+                }
+
                 let mut command = Command::new("qalc");
+                // Never let qalc block waiting on stdin.
+                command.stdin(Stdio::null());
                 command.args(["-t"]);
                 command.args(["-u8"]);
                 command.args(["-set", "maxdeci 9"]);
@@ -460,23 +469,32 @@ impl Application for CosmicCalculator {
                     return Task::batch(tasks);
                 };
 
-                let error = String::from_utf8(output.stderr).unwrap_or_default();
-                if !error.is_empty() {
-                    tracing::error!("An error ocurred: {}", error);
-                    tasks.push(self.update(Message::ShowToast("An error ocurred".to_string())));
-                    return Task::batch(tasks);
-                }
-
                 let outcome = String::from_utf8(output.stdout)
                     .unwrap_or_default()
-                    .replace(['\n', '\r'], "");
+                    .replace(['\n', '\r'], "")
+                    // Strip any stray interactive-prompt artifact.
+                    .replace("> ", "")
+                    .trim()
+                    .to_string();
+
+                // qalc prints informational warnings to stderr even when it
+                // produces a perfectly good result on stdout, so a non-empty
+                // stderr is NOT by itself an error. Only treat the run as
+                // failed when there is no usable result on stdout.
                 if outcome.is_empty() {
-                    tracing::error!("Failed to parse qalc output");
-                    tasks.push(self.update(Message::ShowToast(
-                        "Failed to parse qalc output".to_string(),
-                    )));
+                    let error = String::from_utf8(output.stderr).unwrap_or_default();
+                    if error.is_empty() {
+                        tracing::error!("Failed to parse qalc output");
+                        tasks.push(self.update(Message::ShowToast(
+                            "Failed to parse qalc output".to_string(),
+                        )));
+                    } else {
+                        tracing::error!("An error occurred: {}", error);
+                        tasks
+                            .push(self.update(Message::ShowToast("An error occurred".to_string())));
+                    }
                     return Task::batch(tasks);
-                };
+                }
 
                 self.calculator.outcome = outcome.clone();
 
