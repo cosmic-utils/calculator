@@ -435,9 +435,7 @@ impl Application for CosmicCalculator {
                 }
             }
             Message::Evaluate => {
-                // Guard: evaluating an empty/blank expression drops qalc into
-                // interactive mode, which either hangs waiting on stdin or
-                // returns its "> " prompt as a bogus result. Do nothing here.
+                // An empty expression drops qalc into interactive mode, which hangs.
                 if self.calculator.expression.trim().is_empty() {
                     return Task::batch(tasks);
                 }
@@ -477,10 +475,8 @@ impl Application for CosmicCalculator {
                     .trim()
                     .to_string();
 
-                // qalc prints informational warnings to stderr even when it
-                // produces a perfectly good result on stdout, so a non-empty
-                // stderr is NOT by itself an error. Only treat the run as
-                // failed when there is no usable result on stdout.
+                // qalc writes warnings to stderr even on success, so only treat the
+                // run as failed when stdout has no usable result.
                 if outcome.is_empty() {
                     let error = String::from_utf8(output.stderr).unwrap_or_default();
                     if error.is_empty() {

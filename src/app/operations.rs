@@ -62,13 +62,8 @@ impl Calculator {
     }
 
     pub(crate) fn on_input(&mut self, input: String) {
-        // qalc is the real parser/sandbox and safely handles arbitrary
-        // expressions (functions, constants, units, factorials, etc.) by
-        // returning them unevaluated rather than crashing. Keep only a light
-        // guard so we don't blanket-reject useful input. Notably this now
-        // permits letters (sin, sqrt, pi, e ...), whitespace, '!' for
-        // factorials, and ',' which is required to type decimals in
-        // decimal-comma locales.
+        // qalc validates the expression itself, so keep this filter permissive:
+        // allow letters (sin, pi), whitespace, '!', and ',' for decimal-comma locales.
         if input.chars().all(|c| {
             c.is_alphanumeric()
                 || c.is_whitespace()
