@@ -519,18 +519,12 @@ impl Application for CosmicCalculator {
                     }
                 }
 
-                // Don't swallow application shortcuts (Ctrl+C, Alt+F4, Super+...):
-                // only treat unmodified keys (Shift is fine, some layouts need it
-                // for characters like '(' or '*') as calculator input.
+                // Ignore modified keys so menu keybinds keep working.
                 if modifiers.control() || modifiers.alt() || modifiers.logo() {
                     return Task::batch(tasks);
                 }
-
-                // Handle keyboard input for the calculator even when the text
-                // input is not focused (e.g. after clicking a button). This
-                // covers both the number row and the numpad: with Num Lock on,
-                // numpad keys are delivered as `Key::Character` ("0"-"9", "+",
-                // "-", "*", "/", ".") and numpad Enter as `Named::Enter`.
+                
+                // Calculator input even when the text input is unfocused (covers the numpad).
                 match key {
                     Key::Character(c) => {
                         let operator = match c.as_str() {
@@ -548,9 +542,8 @@ impl Application for CosmicCalculator {
                         if let Some(operator) = operator {
                             return self.update(Message::Operator(operator));
                         }
-                        // Digits and decimal separators go through the same
-                        // validation as typed input ('.' and ',' are kept as-is
-                        // to respect decimal-comma locales).
+                        
+                        // Digits and decimal separators reuse on_input validation.
                         if !c.is_empty()
                             && c.chars()
                                 .all(|ch| ch.is_ascii_digit() || ch == '.' || ch == ',')
