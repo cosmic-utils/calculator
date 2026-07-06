@@ -18,6 +18,7 @@ use cosmic::{
     iced::{
         Alignment, Event, Length, Subscription, event,
         keyboard::Event as KeyEvent,
+        keyboard::key::Named,
         keyboard::{Key, Modifiers},
         window,
     },
@@ -516,6 +517,59 @@ impl Application for CosmicCalculator {
                     if key_bind.matches(modifiers, &key) {
                         return self.update(action.message());
                     }
+                }
+
+                // Don't swallow application shortcuts (Ctrl+C, Alt+F4, Super+...):
+                // only treat unmodified keys (Shift is fine, some layouts need it
+                // for characters like '(' or '*') as calculator input.
+                if modifiers.control() || modifiers.alt() || modifiers.logo() {
+                    return Task::batch(tasks);
+                }
+
+                // Handle keyboard input for the calculator even when the text
+                // input is not focused (e.g. after clicking a button). This
+                // covers both the number row and the numpad: with Num Lock on,
+                // numpad keys are delivered as `Key::Character` ("0"-"9", "+",
+                // "-", "*", "/", ".") and numpad Enter as `Named::Enter`.
+                match key {
+                    Key::Character(c) => {
+                        let operator = match c.as_str() {
+                            "+" => Some(Operator::Add),
+                            "-" => Some(Operator::Subtract),
+                            "*" | "×" => Some(Operator::Multiply),
+                            "/" | "÷" => Some(Operator::Divide),
+                            "%" => Some(Operator::Modulus),
+                            "(" => Some(Operator::ParenthesesOpen),
+                            ")" => Some(Operator::ParenthesesClose),
+                            "^" => Some(Operator::Power),
+                            "=" => Some(Operator::Equal),
+                            _ => None,
+                        };
+                        if let Some(operator) = operator {
+                            return self.update(Message::Operator(operator));
+                        }
+                        // Digits and decimal separators go through the same
+                        // validation as typed input ('.' and ',' are kept as-is
+                        // to respect decimal-comma locales).
+                        if !c.is_empty()
+                            && c.chars()
+                                .all(|ch| ch.is_ascii_digit() || ch == '.' || ch == ',')
+                        {
+                            let mut expression = self.calculator.expression.clone();
+                            expression.push_str(&c);
+                            return self.update(Message::Input(expression));
+                        }
+                    }
+                    Key::Named(Named::Enter) => {
+                        return self.update(Message::Operator(Operator::Equal));
+                    }
+                    Key::Named(Named::Backspace) => {
+                        return self.update(Message::Operator(Operator::Backspace));
+                    }
+                    Key::Named(Named::Delete) | Key::Named(Named::Escape) => {
+                        return self.update(Message::Operator(Operator::Clear));
+                    }
+                    _ => {}
                 }
             }
             Message::Modifiers(modifiers) => {
