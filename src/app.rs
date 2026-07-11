@@ -58,7 +58,7 @@ pub enum Message {
     Input(String),
     ToggleContextPage(ContextPage),
     ToggleContextDrawer,
-    Key(Modifiers, Key),
+    Key(Modifiers, Key, Option<String>),
     Modifiers(Modifiers),
     SystemThemeModeChange,
     NavMenuAction(NavMenuAction),
@@ -532,7 +532,7 @@ impl Application for CosmicCalculator {
 
                 self.calculator.expression = outcome;
             }
-            Message::Key(modifiers, key) => {
+            Message::Key(modifiers, key, text) => {
                 for (key_bind, action) in &self.key_binds {
                     if key_bind.matches(modifiers, &key, None) {
                         return self.update(action.message());
@@ -544,35 +544,40 @@ impl Application for CosmicCalculator {
                     return Task::batch(tasks);
                 }
 
-                // Calculator input even when the text input is unfocused (covers the numpad).
-                match key {
-                    Key::Character(c) => {
-                        let operator = match c.as_str() {
-                            "+" => Some(Operator::Add),
-                            "-" => Some(Operator::Subtract),
-                            "*" | "×" => Some(Operator::Multiply),
-                            "/" | "÷" => Some(Operator::Divide),
-                            "%" => Some(Operator::Modulus),
-                            "(" => Some(Operator::ParenthesesOpen),
-                            ")" => Some(Operator::ParenthesesClose),
-                            "^" => Some(Operator::Power),
-                            "=" => Some(Operator::Equal),
-                            _ => None,
-                        };
-                        if let Some(operator) = operator {
-                            return self.update(Message::Operator(operator));
-                        }
-
-                        // Digits and decimal separators reuse on_input validation.
-                        if !c.is_empty()
-                            && c.chars()
-                                .all(|ch| ch.is_ascii_digit() || ch == '.' || ch == ',')
-                        {
-                            let mut expression = self.calculator.expression.clone();
-                            expression.push_str(&c);
-                            return self.update(Message::Input(expression));
-                        }
+                // `text` carries the layout-resolved character; the key is a fallback.
+                let character = match (text, &key) {
+                    (Some(t), _) => Some(t),
+                    (None, Key::Character(c)) => Some(c.to_string()),
+                    _ => None,
+                };
+                if let Some(c) = character {
+                    let operator = match c.as_str() {
+                        "+" => Some(Operator::Add),
+                        "-" => Some(Operator::Subtract),
+                        "*" | "×" => Some(Operator::Multiply),
+                        "/" | "÷" => Some(Operator::Divide),
+                        "%" => Some(Operator::Modulus),
+                        "(" => Some(Operator::ParenthesesOpen),
+                        ")" => Some(Operator::ParenthesesClose),
+                        "^" => Some(Operator::Power),
+                        "=" => Some(Operator::Equal),
+                        _ => None,
+                    };
+                    if let Some(operator) = operator {
+                        return self.update(Message::Operator(operator));
                     }
+
+                    // Digits and decimal separators reuse on_input validation.
+                    if !c.is_empty()
+                        && c.chars()
+                            .all(|ch| ch.is_ascii_digit() || ch == '.' || ch == ',')
+                    {
+                        let mut expression = self.calculator.expression.clone();
+                        expression.push_str(&c);
+                        return self.update(Message::Input(expression));
+                    }
+                }
+                match key {
                     Key::Named(Named::Enter) => {
                         return self.update(Message::Operator(Operator::Equal));
                     }
@@ -651,8 +656,10 @@ impl Application for CosmicCalculator {
 
         let subscriptions = vec![
             event::listen_with(|event, status, _id| match event {
-                Event::Keyboard(KeyEvent::KeyPressed { key, modifiers, .. }) => match status {
-                    event::Status::Ignored => Some(Message::Key(modifiers, key)),
+                Event::Keyboard(KeyEvent::KeyPressed { key, modifiers, text, .. }) => match status {
+                    event::Status::Ignored => {
+                        Some(Message::Key(modifiers, key, text.map(|t| t.to_string())))
+                    }
                     event::Status::Captured => None,
                 },
                 Event::Keyboard(KeyEvent::ModifiersChanged(modifiers)) => {
