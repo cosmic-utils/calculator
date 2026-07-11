@@ -187,7 +187,7 @@ impl Application for CosmicCalculator {
 
         let mut tasks = vec![];
 
-        tasks.push(app.set_window_title(fl!("app-title")));
+        tasks.push(app.set_window_title(fl!("app-title"), app.core.main_window_id().unwrap()));
         tasks.push(widget::text_input::focus(app.input_id.clone()));
         tasks.push(Task::perform(
             async move { operations::uses_decimal_comma().await },
@@ -523,7 +523,7 @@ impl Application for CosmicCalculator {
                 if modifiers.control() || modifiers.alt() || modifiers.logo() {
                     return Task::batch(tasks);
                 }
-                
+
                 // Calculator input even when the text input is unfocused (covers the numpad).
                 match key {
                     Key::Character(c) => {
@@ -542,7 +542,7 @@ impl Application for CosmicCalculator {
                         if let Some(operator) = operator {
                             return self.update(Message::Operator(operator));
                         }
-                        
+
                         // Digits and decimal separators reuse on_input validation.
                         if !c.is_empty()
                             && c.chars()
