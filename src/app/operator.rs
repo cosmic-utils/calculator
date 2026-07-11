@@ -9,6 +9,7 @@ pub enum Operator {
     Equal,
     Clear,
     Backspace,
+    Negate,
     ParenthesesOpen,
     ParenthesesClose,
     Power,
@@ -31,6 +32,7 @@ impl Operator {
             Self::SquareRoot => "√",
             Self::Clear => "C",
             Self::Backspace => "⌫",
+            Self::Negate => "±",
         }
     }
 
@@ -49,6 +51,7 @@ impl Operator {
             Self::SquareRoot => "√",
             Self::Clear => "C",
             Self::Backspace => "⌫",
+            Self::Negate => "±",
         }
     }
 }

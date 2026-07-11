@@ -48,6 +48,7 @@ pub struct CosmicCalculator {
     calculator: Calculator,
     toasts: widget::Toasts<Message>,
     input_id: widget::Id,
+    button_font_size: f32,
 }
 
 #[derive(Debug, Clone)]
@@ -68,6 +69,7 @@ pub enum Message {
     SetDecimalComma(bool),
     Evaluate,
     Window,
+    Resized(cosmic::iced::Size),
 }
 
 #[derive(Copy, Clone, Debug, Default, Eq, PartialEq)]
@@ -149,7 +151,7 @@ impl Application for CosmicCalculator {
 
         for entry in &flags.config.history {
             nav.insert()
-                .text(entry.expression.clone())
+                .text(history_label(&entry.expression))
                 .data(entry.clone());
         }
 
@@ -183,6 +185,7 @@ impl Application for CosmicCalculator {
             calculator: Calculator::new(),
             toasts: widget::toaster::Toasts::new(Message::CloseToast),
             input_id: widget::Id::unique(),
+            button_font_size: 20.0,
         };
 
         let mut tasks = vec![];
@@ -252,18 +255,26 @@ impl Application for CosmicCalculator {
             .push(
                 widget::column::with_capacity(6)
                     .push(
-                        widget::row::with_capacity(3)
-                            .push(standard_button(
+                        widget::row::with_capacity(4)
+                            .push(destructive_button(
                                 Message::Operator(Operator::Clear),
-                                Length::FillPortion(2),
+                                Length::FillPortion(1),
+                                self.button_font_size,
+                            ))
+                            .push(standard_button(
+                                Message::Operator(Operator::Negate),
+                                Length::FillPortion(1),
+                                self.button_font_size,
                             ))
                             .push(standard_button(
                                 Message::Operator(Operator::Modulus),
                                 Length::FillPortion(1),
+                                self.button_font_size,
                             ))
                             .push(suggested_button(
-                                Message::Operator(Operator::Divide),
+                                Message::Operator(Operator::Power),
                                 Length::FillPortion(1),
+                                self.button_font_size,
                             ))
                             .width(Length::Fill)
                             .height(Length::Fill)
@@ -274,18 +285,22 @@ impl Application for CosmicCalculator {
                             .push(standard_button(
                                 Message::Operator(Operator::ParenthesesOpen),
                                 Length::FillPortion(1),
+                                self.button_font_size,
                             ))
                             .push(standard_button(
                                 Message::Operator(Operator::ParenthesesClose),
                                 Length::FillPortion(1),
+                                self.button_font_size,
                             ))
                             .push(standard_button(
                                 Message::Operator(Operator::SquareRoot),
                                 Length::FillPortion(1),
+                                self.button_font_size,
                             ))
                             .push(suggested_button(
-                                Message::Operator(Operator::Power),
+                                Message::Operator(Operator::Divide),
                                 Length::FillPortion(1),
+                                self.button_font_size,
                             ))
                             .width(Length::Fill)
                             .height(Length::Fill)
@@ -293,21 +308,25 @@ impl Application for CosmicCalculator {
                     )
                     .push(
                         widget::row::with_capacity(4)
-                            .push(standard_button(
+                            .push(text_button(
                                 Message::Number(7.0),
                                 Length::FillPortion(1),
+                                self.button_font_size,
                             ))
-                            .push(standard_button(
+                            .push(text_button(
                                 Message::Number(8.0),
                                 Length::FillPortion(1),
+                                self.button_font_size,
                             ))
-                            .push(standard_button(
+                            .push(text_button(
                                 Message::Number(9.0),
                                 Length::FillPortion(1),
+                                self.button_font_size,
                             ))
                             .push(suggested_button(
                                 Message::Operator(Operator::Multiply),
                                 Length::FillPortion(1),
+                                self.button_font_size,
                             ))
                             .width(Length::Fill)
                             .height(Length::Fill)
@@ -315,21 +334,25 @@ impl Application for CosmicCalculator {
                     )
                     .push(
                         widget::row::with_capacity(4)
-                            .push(standard_button(
+                            .push(text_button(
                                 Message::Number(4.0),
                                 Length::FillPortion(1),
+                                self.button_font_size,
                             ))
-                            .push(standard_button(
+                            .push(text_button(
                                 Message::Number(5.0),
                                 Length::FillPortion(1),
+                                self.button_font_size,
                             ))
-                            .push(standard_button(
+                            .push(text_button(
                                 Message::Number(6.0),
                                 Length::FillPortion(1),
+                                self.button_font_size,
                             ))
                             .push(suggested_button(
                                 Message::Operator(Operator::Subtract),
                                 Length::FillPortion(1),
+                                self.button_font_size,
                             ))
                             .width(Length::Fill)
                             .height(Length::Fill)
@@ -337,21 +360,25 @@ impl Application for CosmicCalculator {
                     )
                     .push(
                         widget::row::with_capacity(4)
-                            .push(standard_button(
+                            .push(text_button(
                                 Message::Number(1.0),
                                 Length::FillPortion(1),
+                                self.button_font_size,
                             ))
-                            .push(standard_button(
+                            .push(text_button(
                                 Message::Number(2.0),
                                 Length::FillPortion(1),
+                                self.button_font_size,
                             ))
-                            .push(standard_button(
+                            .push(text_button(
                                 Message::Number(3.0),
                                 Length::FillPortion(1),
+                                self.button_font_size,
                             ))
                             .push(suggested_button(
                                 Message::Operator(Operator::Add),
                                 Length::FillPortion(1),
+                                self.button_font_size,
                             ))
                             .width(Length::Fill)
                             .height(Length::Fill)
@@ -359,21 +386,25 @@ impl Application for CosmicCalculator {
                     )
                     .push(
                         widget::row::with_capacity(4)
-                            .push(standard_button(
+                            .push(text_button(
                                 Message::Number(0.0),
                                 Length::FillPortion(1),
+                                self.button_font_size,
                             ))
-                            .push(standard_button(
+                            .push(text_button(
                                 Message::Operator(Operator::Point),
                                 Length::FillPortion(1),
+                                self.button_font_size,
                             ))
                             .push(standard_button(
                                 Message::Operator(Operator::Backspace),
                                 Length::FillPortion(1),
+                                self.button_font_size,
                             ))
                             .push(suggested_button(
                                 Message::Operator(Operator::Equal),
                                 Length::FillPortion(1),
+                                self.button_font_size,
                             ))
                             .width(Length::Fill)
                             .height(Length::Fill)
@@ -507,7 +538,7 @@ impl Application for CosmicCalculator {
                 }
                 self.nav
                     .insert()
-                    .text(self.calculator.expression.clone())
+                    .text(history_label(&self.calculator.expression))
                     .data(self.calculator.clone());
 
                 self.calculator.expression = outcome;
@@ -523,7 +554,7 @@ impl Application for CosmicCalculator {
                 if modifiers.control() || modifiers.alt() || modifiers.logo() {
                     return Task::batch(tasks);
                 }
-                
+
                 // Calculator input even when the text input is unfocused (covers the numpad).
                 match key {
                     Key::Character(c) => {
@@ -542,7 +573,7 @@ impl Application for CosmicCalculator {
                         if let Some(operator) = operator {
                             return self.update(Message::Operator(operator));
                         }
-                        
+
                         // Digits and decimal separators reuse on_input validation.
                         if !c.is_empty()
                             && c.chars()
@@ -604,6 +635,10 @@ impl Application for CosmicCalculator {
             Message::Window => {
                 return widget::text_input::focus(self.input_id.clone());
             }
+            Message::Resized(size) => {
+                // Scale button labels with the window height.
+                self.button_font_size = (size.height / 22.0).clamp(10.0, 48.0);
+            }
         }
         Task::batch(tasks)
     }
@@ -636,6 +671,7 @@ impl Application for CosmicCalculator {
                     Some(Message::Modifiers(modifiers))
                 }
                 Event::Window(window::Event::Focused) => Some(Message::Window),
+                Event::Window(window::Event::Resized(size)) => Some(Message::Resized(size)),
                 _ => None,
             }),
             cosmic_config::config_subscription(
@@ -680,22 +716,50 @@ impl CosmicCalculator {
     }
 }
 
-pub fn standard_button<'a>(message: Message, width: Length) -> Element<'a, Message> {
+// Sidebar label: expression truncated to fit the sidebar width.
+fn history_label(expression: &str) -> String {
+    const MAX: usize = 28;
+    if expression.chars().count() > MAX {
+        expression.chars().take(MAX).collect::<String>() + "…"
+    } else {
+        expression.to_string()
+    }
+}
+
+pub fn standard_button<'a>(message: Message, width: Length, font_size: f32) -> Element<'a, Message> {
     let label = match message.clone() {
         Message::Number(num) => num.to_string(),
         Message::Operator(operator) => operator.display().to_string(),
         _ => String::new(),
     };
-    button(label, message, theme::Button::Standard, width)
+    button(label, message, theme::Button::Standard, width, font_size)
 }
 
-pub fn suggested_button<'a>(message: Message, width: Length) -> Element<'a, Message> {
+pub fn suggested_button<'a>(message: Message, width: Length, font_size: f32) -> Element<'a, Message> {
     let label = match &message {
         Message::Number(num) => num.to_string(),
         Message::Operator(operator) => operator.display().to_string(),
         _ => String::new(),
     };
-    button(label.to_string(), message, theme::Button::Suggested, width)
+    button(label.to_string(), message, theme::Button::Suggested, width, font_size)
+}
+
+pub fn destructive_button<'a>(message: Message, width: Length, font_size: f32) -> Element<'a, Message> {
+    let label = match &message {
+        Message::Number(num) => num.to_string(),
+        Message::Operator(operator) => operator.display().to_string(),
+        _ => String::new(),
+    };
+    button(label.to_string(), message, theme::Button::Destructive, width, font_size)
+}
+
+pub fn text_button<'a>(message: Message, width: Length, font_size: f32) -> Element<'a, Message> {
+    let label = match &message {
+        Message::Number(num) => num.to_string(),
+        Message::Operator(operator) => operator.display().to_string(),
+        _ => String::new(),
+    };
+    button(label.to_string(), message, theme::Button::Text, width, font_size)
 }
 
 pub fn button<'a>(
@@ -703,14 +767,17 @@ pub fn button<'a>(
     message: Message,
     style: theme::Button,
     width: Length,
+    font_size: f32,
 ) -> Element<'a, Message> {
     widget::button::custom(
-        widget::container(widget::text(label).size(20.0))
+        widget::container(widget::text(label).size(font_size).line_height(1.0))
             .center(Length::Fill)
             .width(Length::Fill)
             .height(Length::Fill),
     )
     .class(style)
+    // Class padding off-centers glyphs on small buttons; the container centers.
+    .padding(0)
     .width(width)
     .height(Length::Fill)
     .on_press(message)
