@@ -20,6 +20,3 @@ features = ["tokio", "winit", "about", "wayland"]
 [dependencies.i18n-embed]
 version = "0.14"
 features = ["fluent-system", "desktop-requester"]
-
-[patch."https://github.com/smithay/client-toolkit.git"]
-sctk = { package = "smithay-client-toolkit", version = "=0.19.2" }
