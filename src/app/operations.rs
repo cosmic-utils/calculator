@@ -49,6 +49,7 @@ impl Calculator {
             Operator::Power => self.add_operator(Operator::Power),
             Operator::SquareRoot => self.add_operator(Operator::SquareRoot),
             Operator::Clear => self.clear(),
+            Operator::Negate => self.toggle_sign(),
             Operator::Equal => return Some(Message::Evaluate),
             Operator::Backspace => {
                 self.expression.pop();
@@ -56,6 +57,34 @@ impl Calculator {
         };
         None
     }
+    pub fn toggle_sign(&mut self) {
+        // Start index of the trailing number, if the expression ends with one.
+        let Some(num_start) = self
+            .expression
+            .char_indices()
+            .rev()
+            .take_while(|(_, c)| c.is_ascii_digit() || *c == '.' || *c == ',')
+            .last()
+            .map(|(i, _)| i)
+        else {
+            return; // empty or not ending in a number: nothing to negate
+        };
+
+        let before = &self.expression[..num_start];
+        // A '-' is unary at the start or right after an operator or '('.
+        let is_unary_minus = before.ends_with('-')
+            && matches!(
+                before[..before.len() - 1].chars().next_back(),
+                None | Some('+' | '-' | '*' | '/' | '×' | '÷' | '%' | '^' | '(')
+            );
+
+        if is_unary_minus {
+            self.expression.remove(num_start - 1);
+        } else {
+            self.expression.insert(num_start, '-');
+        }
+    }
+
     pub fn clear(&mut self) {
         self.expression.clear();
         self.outcome = String::new();
