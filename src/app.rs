@@ -49,6 +49,8 @@ pub struct CosmicCalculator {
     toasts: widget::Toasts<Message>,
     input_id: widget::Id,
     button_font_size: f32,
+    input_font_size: f32,
+    previous: String,
     mode: Mode,
 }
 
@@ -183,13 +185,14 @@ impl Application for CosmicCalculator {
 
     fn on_nav_select(&mut self, id: nav_bar::Id) -> Task<Self::Message> {
         self.nav.activate(id);
-        self.nav
-            .active_data()
-            .map_or(Task::none(), |data: &Calculator| {
-                self.calculator.expression = data.outcome.to_string();
-                self.calculator.outcome = String::new();
-                Task::none()
-            })
+        let Some(data) = self.nav.active_data::<Calculator>().cloned() else {
+            return Task::none();
+        };
+        // Restore the result and the formula line that produced it.
+        self.previous = format!("{} =", data.expression.trim());
+        self.calculator.expression = data.outcome.to_string();
+        self.calculator.outcome = String::new();
+        Task::none()
     }
 
     fn init(core: Core, flags: Self::Flags) -> (Self, Task<Self::Message>) {
@@ -232,6 +235,8 @@ impl Application for CosmicCalculator {
             toasts: widget::toaster::Toasts::new(Message::CloseToast),
             input_id: widget::Id::unique(),
             button_font_size: 20.0,
+            input_font_size: 32.0,
+            previous: String::new(),
             mode: Mode::Basic, // Defaults to basic mode
         };
 
@@ -437,17 +442,31 @@ impl Application for CosmicCalculator {
         // Final outer column combining the input field and the completed keypad
         widget::column::with_capacity(2)
             .push(
-                widget::text_input("", &self.calculator.expression)
-                    .on_input(Message::Input)
-                    .on_submit(|_| Message::Operator(Operator::Equal))
-                    .id(self.input_id.clone())
-                    .size(32.0)
-                    .width(Length::Fill),
+                widget::column::with_capacity(2)
+                    .push(
+                        widget::container(
+                            widget::text(&self.previous)
+                                .size((self.input_font_size * 0.45).max(9.0))
+                                .class(theme::Text::Accent),
+                        )
+                        .width(Length::Fill)
+                        .align_x(Alignment::End),
+                    )
+                    .push(
+                        widget::text_input("", &self.calculator.expression)
+                            .on_input(Message::Input)
+                            .on_submit(|_| Message::Operator(Operator::Equal))
+                            .id(self.input_id.clone())
+                            .size(self.input_font_size)
+                            .padding(spacing.space_xxs)
+                            .width(Length::Fill),
+                    )
+                    .spacing(2),
             )
             .push(keypad)
             .align_x(Alignment::Center)
             .spacing(spacing.space_s)
-            .padding(spacing.space_xxs)
+            .padding([0, spacing.space_xxs, spacing.space_xxs, spacing.space_xxs])
             .into()
     }
 
@@ -485,6 +504,9 @@ impl Application for CosmicCalculator {
             Message::Number(num) => self.calculator.on_number_press(num),
             Message::Input(input) => self.calculator.on_input(input),
             Message::Operator(operator) => {
+                if operator == Operator::Clear {
+                    self.previous.clear();
+                }
                 if let Some(operations::Message::Evaluate) =
                     self.calculator.on_operator_press(&operator)
                 {
@@ -497,12 +519,29 @@ impl Application for CosmicCalculator {
                     return Task::batch(tasks);
                 }
 
+                // Chain on the exact form of the previous result when it is the prefix.
+                let calc = &self.calculator;
+                let eval_expression = if calc.chain_exact
+                    && !calc.outcome.is_empty()
+                    && !calc.outcome_exact.is_empty()
+                    && calc.expression.starts_with(&calc.outcome)
+                {
+                    format!(
+                        "({}){}",
+                        calc.outcome_exact,
+                        &calc.expression[calc.outcome.len()..]
+                    )
+                } else {
+                    calc.expression.trim().to_string()
+                };
+
                 let mut command = Command::new("qalc");
                 // Never let qalc block waiting on stdin.
                 command.stdin(Stdio::null());
                 command.args(["-t"]);
                 command.args(["-u8"]);
-                command.args(["-set", "maxdeci 9"]);
+                command.args(["-set", "maxdeci 18"]);
+                command.args(["-set", "precision 50"]);
 
                 if self.calculator.decimal_comma {
                     command.args(["-set", "decimal comma on"]);
@@ -514,7 +553,7 @@ impl Application for CosmicCalculator {
                     command.args(["-set", "autocalc off"]);
                 }
 
-                command.args([&self.calculator.expression.trim().to_string()]);
+                command.args([&eval_expression]);
 
                 let Ok(output) = command.env("LANG", "C").output() else {
                     tracing::error!("Failed to execute qalc command");
@@ -549,7 +588,41 @@ impl Application for CosmicCalculator {
                     return Task::batch(tasks);
                 }
 
+                self.previous = format!("{} =", self.calculator.expression.trim());
                 self.calculator.outcome = outcome.clone();
+
+                // Second pass: keep an exact (or high-precision) value for chaining.
+                let mut exact_command = Command::new("qalc");
+                exact_command.stdin(Stdio::null());
+                exact_command.args(["-t", "-u8"]);
+                exact_command.args(["-set", "fr exact"]);
+                exact_command.args(["-set", "precision 50"]);
+                exact_command.args(["-set", "maxdeci off"]);
+                exact_command.args(["-set", "unicode off"]);
+                if self.calculator.decimal_comma {
+                    exact_command.args(["-set", "decimal comma on"]);
+                } else {
+                    exact_command.args(["-set", "decimal comma off"]);
+                }
+                if operations::autocalc() {
+                    exact_command.args(["-set", "autocalc off"]);
+                }
+                exact_command.args([&eval_expression]);
+                let exact = exact_command
+                    .env("LANG", "C")
+                    .output()
+                    .ok()
+                    .map(|output| {
+                        String::from_utf8(output.stdout)
+                            .unwrap_or_default()
+                            .replace(['\n', '\r'], "")
+                            .replace("> ", "")
+                            .trim()
+                            .to_string()
+                    })
+                    .filter(|exact| !exact.is_empty() && exact.chars().count() <= 1000);
+                self.calculator.outcome_exact = exact.unwrap_or_else(|| outcome.clone());
+                self.calculator.chain_exact = true;
 
                 let mut history = self.config.history.clone();
                 history.push(self.calculator.clone());
@@ -670,6 +743,7 @@ impl Application for CosmicCalculator {
             }
             Message::Resized(size) => {
                 self.button_font_size = (size.height / 22.0).clamp(10.0, 48.0);
+                self.input_font_size = (size.height * 0.065).clamp(14.0, 32.0);
             }
             Message::Toggle(mode) => self.mode = mode,
         }
