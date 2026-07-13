@@ -11,6 +11,10 @@ pub struct Calculator {
     pub expression: String,
     pub outcome: String,
     pub decimal_comma: bool,
+    #[serde(skip)]
+    pub outcome_exact: String,
+    #[serde(skip)]
+    pub chain_exact: bool,
 }
 
 impl Display for Calculator {
@@ -88,9 +92,14 @@ impl Calculator {
     pub fn clear(&mut self) {
         self.expression.clear();
         self.outcome = String::new();
+        self.outcome_exact = String::new();
+        self.chain_exact = false;
     }
 
     pub(crate) fn on_input(&mut self, input: String) {
+        // Exact chaining stays valid only while the result prefix is untouched.
+        self.chain_exact =
+            self.chain_exact && !self.outcome.is_empty() && input.starts_with(&self.outcome);
         // qalc validates the expression itself, so keep this filter permissive:
         // allow letters (sin, pi), whitespace, '!', and ',' for decimal-comma locales.
         if input.chars().all(|c| {
