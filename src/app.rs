@@ -194,7 +194,7 @@ impl Application for CosmicCalculator {
         let about = About::default()
             .name(fl!("app-title"))
             .icon(widget::icon::from_name(Self::APP_ID))
-            .version("0.2.0")
+            .version("0.2.1")
             .author("Eduardo Flores")
             .license("GPL-3.0-only")
             .links([

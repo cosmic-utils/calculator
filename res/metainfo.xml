@@ -56,6 +56,20 @@
   <icon type="remote" height="256" width="256">https://raw.githubusercontent.com/cosmic-utils/calculator/main/res/icons/hicolor/scalable/apps/icon.svg</icon>
   <launchable type="desktop-id">dev.edfloreshz.Calculator.desktop</launchable>
   <releases>
+    <release version="0.2.1" date="2026-07-16">
+        <description>
+            <p>Keyboard support and UI polish ⌨️</p>
+            <ul>
+                <li>Added global keyboard support, including numpad, number row and operator symbols</li>
+                <li>Added parentheses, square root and power operators</li>
+                <li>Improved keypad and history sidebar UI</li>
+                <li>Auto-focus the input field on launch and when the app regains focus</li>
+                <li>Fixed theme detection on Flatpak</li>
+                <li>Fixed button colors and unfocused numpad/shifted symbols</li>
+                <li>Added Czech, Hungarian, Ukrainian and French translations</li>
+            </ul>
+        </description>
+    </release>
     <release version="0.2.0" date="2025-09-24">
         <description>
             <p>New backend! 🚀</p>
