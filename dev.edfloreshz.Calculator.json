@@ -2,7 +2,7 @@
   "$schema": "https://raw.githubusercontent.com/flatpak/flatpak-builder/main/data/flatpak-manifest.schema.json",
   "id": "dev.edfloreshz.Calculator",
   "runtime": "org.freedesktop.Platform",
-  "runtime-version": "24.08",
+  "runtime-version": "25.08",
   "base": "com.system76.Cosmic.BaseApp",
   "base-version": "stable",
   "sdk": "org.freedesktop.Sdk",
@@ -17,6 +17,8 @@
     "--socket=wayland",
     "--device=dri",
     "--talk-name=com.system76.CosmicSettingsDaemon",
+    "--talk-name=com.system76.CosmicSettingsDaemon.Config.*",
+    "--talk-name=com.system76.CosmicSettingsDaemon.State.*",
     "--filesystem=xdg-config/cosmic:rw"
   ],
   "build-options": {
@@ -89,7 +91,7 @@
           "type": "dir",
           "path": "./"
         },
-        "generated-sources.json"
+        "cargo-sources.json"
       ]
     }
   ]
