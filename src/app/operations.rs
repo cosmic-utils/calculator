@@ -38,16 +38,17 @@ impl Calculator {
 
     pub fn on_operator_press(&mut self, operator: &Operator) -> Option<Message> {
         match operator {
-            Operator::Add => self.add_operator(Operator::Add),
-            Operator::Subtract => self.add_operator(Operator::Subtract),
-            Operator::Multiply => self.add_operator(Operator::Multiply),
-            Operator::Divide => self.add_operator(Operator::Divide),
-            Operator::Modulus => self.add_operator(Operator::Modulus),
-            Operator::Point => self.add_operator(Operator::Point),
-            Operator::ParenthesesOpen => self.add_operator(Operator::ParenthesesOpen),
-            Operator::ParenthesesClose => self.add_operator(Operator::ParenthesesClose),
-            Operator::Power => self.add_operator(Operator::Power),
-            Operator::SquareRoot => self.add_operator(Operator::SquareRoot),
+            Operator::Add
+            | Operator::Subtract
+            | Operator::Multiply
+            | Operator::Divide
+            | Operator::Modulus
+            | Operator::Point
+            | Operator::ParenthesesOpen
+            | Operator::ParenthesesClose
+            | Operator::Power
+            | Operator::SquareRoot => self.add_operator(operator.clone()),
+
             Operator::Clear => self.clear(),
             Operator::Negate => self.toggle_sign(),
             Operator::Equal => return Some(Message::Evaluate),
