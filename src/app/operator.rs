@@ -14,6 +14,21 @@ pub enum Operator {
     ParenthesesClose,
     Power,
     SquareRoot,
+    // Scientific
+    Comma,
+    Log,
+    Ln,
+    Log2,
+    Factorial,
+    Sin,
+    Cos,
+    Tan,
+    Asin,
+    Acos,
+    Atan,
+    Pi,
+    E,
+    Reciprocal,
 }
 
 impl Operator {
@@ -33,6 +48,21 @@ impl Operator {
             Self::Clear => "C",
             Self::Backspace => "⌫",
             Self::Negate => "±",
+            // Scientific
+            Self::Comma => ",",
+            Self::Log => "log",
+            Self::Ln => "ln",
+            Self::Log2 => "log2",
+            Self::Factorial => "!",
+            Self::Sin => "sin",
+            Self::Cos => "cos",
+            Self::Tan => "tan",
+            Self::Asin => "asin",
+            Self::Acos => "acos",
+            Self::Atan => "atan",
+            Self::Pi => "π",
+            Self::E => "e",
+            Self::Reciprocal => "1/x",
         }
     }
 
@@ -52,6 +82,20 @@ impl Operator {
             Self::Clear => "C",
             Self::Backspace => "⌫",
             Self::Negate => "±",
+            Self::Comma => ",",
+            Self::Log => "log",
+            Self::Ln => "ln",
+            Self::Log2 => "log2",
+            Self::Factorial => "!",
+            Self::Sin => "sin",
+            Self::Cos => "cos",
+            Self::Tan => "tan",
+            Self::Asin => "asin",
+            Self::Acos => "acos",
+            Self::Atan => "atan",
+            Self::Pi => "π",
+            Self::E => "e",
+            Self::Reciprocal => "⁻¹",
         }
     }
 }

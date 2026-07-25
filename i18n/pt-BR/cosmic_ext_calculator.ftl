@@ -5,6 +5,9 @@ delete = Excluir
 clear-history = Limpar histórico
 malformed-expression = Expressão malformada
 
+basic-mode = Modo Básico
+scientific-mode = Modo Científico
+
 ## About
 repository = Repositório
 support = Suporte

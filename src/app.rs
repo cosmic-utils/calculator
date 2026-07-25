@@ -49,6 +49,7 @@ pub struct CosmicCalculator {
     toasts: widget::Toasts<Message>,
     input_id: widget::Id,
     button_font_size: f32,
+    scientific_mode: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -70,6 +71,7 @@ pub enum Message {
     Evaluate,
     Window,
     Resized(cosmic::iced::Size),
+    ToggleScientificMode,
 }
 
 #[derive(Copy, Clone, Debug, Default, Eq, PartialEq)]
@@ -88,6 +90,7 @@ pub struct Flags {
 pub enum MenuAction {
     About,
     ClearHistory,
+    ToggleScientificMode,
 }
 
 impl menu::action::MenuAction for MenuAction {
@@ -97,6 +100,7 @@ impl menu::action::MenuAction for MenuAction {
         match self {
             MenuAction::About => Message::ToggleContextPage(ContextPage::About),
             MenuAction::ClearHistory => Message::CleanHistory,
+            MenuAction::ToggleScientificMode => Message::ToggleScientificMode,
         }
     }
 }
@@ -222,6 +226,7 @@ impl Application for CosmicCalculator {
             toasts: widget::toaster::Toasts::new(Message::CloseToast),
             input_id: widget::Id::unique(),
             button_font_size: 20.0,
+            scientific_mode: false,
         };
 
         let mut tasks = vec![];
@@ -237,11 +242,22 @@ impl Application for CosmicCalculator {
     }
 
     fn header_start<'a>(&'a self) -> Vec<Element<'a, Self::Message>> {
+        let scientific_label = if self.scientific_mode {
+            fl!("basic-mode")
+        } else {
+            fl!("scientific-mode")
+        };
+
         let menu_bar = menu::bar(vec![menu::Tree::with_children(
             RcElementWrapper::new(menu::root(fl!("view")).into()),
             menu::items(
                 &self.key_binds,
                 vec![
+                    menu::Item::Button(
+                        scientific_label,
+                        Some(icons::get_handle("settings-symbolic", 14)),
+                        MenuAction::ToggleScientificMode,
+                    ),
                     menu::Item::Button(
                         fl!("clear-history"),
                         Some(icons::get_handle("large-brush-symbolic", 14)),
@@ -282,6 +298,125 @@ impl Application for CosmicCalculator {
     fn view<'a>(&'a self) -> Element<'a, Self::Message> {
         let spacing = cosmic::theme::active().cosmic().spacing;
 
+        // Build the keypad column
+        let mut keypad = widget::column::with_capacity(if self.scientific_mode { 11 } else { 7 });
+
+        // Scientific buttons at the top of the keypad
+        if self.scientific_mode {
+            keypad = keypad
+                .push(
+                    widget::row::with_capacity(4)
+                        .push(self.button(Message::Operator(Operator::Log), theme::Button::Standard))
+                        .push(self.button(Message::Operator(Operator::Ln), theme::Button::Standard))
+                        .push(self.button(Message::Operator(Operator::Log2), theme::Button::Standard))
+                        .push(self.button(Message::Operator(Operator::Factorial), theme::Button::Standard))
+                        .width(Length::Fill)
+                        .height(Length::Fill)
+                        .spacing(spacing.space_xs),
+                )
+                .push(
+                    widget::row::with_capacity(4)
+                        .push(self.button(Message::Operator(Operator::Sin), theme::Button::Standard))
+                        .push(self.button(Message::Operator(Operator::Cos), theme::Button::Standard))
+                        .push(self.button(Message::Operator(Operator::Tan), theme::Button::Standard))
+                        .push(self.button(Message::Operator(Operator::Comma), theme::Button::Standard))
+                        .width(Length::Fill)
+                        .height(Length::Fill)
+                        .spacing(spacing.space_xs),
+                )
+                .push(
+                    widget::row::with_capacity(4)
+                        .push(self.button(Message::Operator(Operator::Asin), theme::Button::Standard))
+                        .push(self.button(Message::Operator(Operator::Acos), theme::Button::Standard))
+                        .push(self.button(Message::Operator(Operator::Atan), theme::Button::Standard))
+                        .push(self.button(Message::Operator(Operator::Reciprocal), theme::Button::Standard))
+                        .width(Length::Fill)
+                        .height(Length::Fill)
+                        .spacing(spacing.space_xs),
+                )
+                .push(
+                    widget::row::with_capacity(4)
+                        .push(self.button(Message::Operator(Operator::E), theme::Button::Standard))
+                        .push(self.button(Message::Operator(Operator::Pi), theme::Button::Standard))
+                        .width(Length::Fill)
+                        .height(Length::Fill)
+                        .spacing(spacing.space_xs),
+                );
+        }
+
+        // Standard buttons and toaster to the keypad
+        keypad = keypad
+            .push(
+                widget::row::with_capacity(4)
+                    .push(self.button(Message::Operator(Operator::Clear), theme::Button::Destructive))
+                    .push(self.button(Message::Operator(Operator::Negate), theme::Button::Standard))
+                    .push(self.button(Message::Operator(Operator::Modulus), theme::Button::Standard))
+                    .push(self.button(Message::Operator(Operator::Power), theme::Button::Suggested))
+                    .width(Length::Fill)
+                    .height(Length::Fill)
+                    .spacing(spacing.space_xs),
+            )
+            .push(
+                widget::row::with_capacity(4)
+                    .push(self.button(Message::Operator(Operator::ParenthesesOpen), theme::Button::Standard))
+                    .push(self.button(Message::Operator(Operator::ParenthesesClose), theme::Button::Standard))
+                    .push(self.button(Message::Operator(Operator::SquareRoot), theme::Button::Standard))
+                    .push(self.button(Message::Operator(Operator::Divide), theme::Button::Suggested))
+                    .width(Length::Fill)
+                    .height(Length::Fill)
+                    .spacing(spacing.space_xs),
+            )
+            .push(
+                widget::row::with_capacity(4)
+                    .push(self.button(Message::Number(7.0), theme::Button::Text))
+                    .push(self.button(Message::Number(8.0), theme::Button::Text))
+                    .push(self.button(Message::Number(9.0), theme::Button::Text))
+                    .push(self.button(Message::Operator(Operator::Multiply), theme::Button::Suggested))
+                    .width(Length::Fill)
+                    .height(Length::Fill)
+                    .spacing(spacing.space_xs),
+            )
+            .push(
+                widget::row::with_capacity(4)
+                    .push(self.button(Message::Number(4.0), theme::Button::Text))
+                    .push(self.button(Message::Number(5.0), theme::Button::Text))
+                    .push(self.button(Message::Number(6.0), theme::Button::Text))
+                    .push(self.button(Message::Operator(Operator::Subtract), theme::Button::Suggested))
+                    .width(Length::Fill)
+                    .height(Length::Fill)
+                    .spacing(spacing.space_xs),
+            )
+            .push(
+                widget::row::with_capacity(4)
+                    .push(self.button(Message::Number(1.0), theme::Button::Text))
+                    .push(self.button(Message::Number(2.0), theme::Button::Text))
+                    .push(self.button(Message::Number(3.0), theme::Button::Text))
+                    .push(self.button(Message::Operator(Operator::Add), theme::Button::Suggested))
+                    .width(Length::Fill)
+                    .height(Length::Fill)
+                    .spacing(spacing.space_xs),
+            )
+            .push(
+                widget::row::with_capacity(4)
+                    .push(self.button(Message::Number(0.0), theme::Button::Text))
+                    .push(self.button(Message::Operator(Operator::Point), theme::Button::Text))
+                    .push(self.button(Message::Operator(Operator::Backspace), theme::Button::Destructive))
+                    .push(self.button(Message::Operator(Operator::Equal), theme::Button::Suggested))
+                    .width(Length::Fill)
+                    .height(Length::Fill)
+                    .spacing(spacing.space_xs),
+            )
+            .push(widget::row(vec![widget::toaster(
+                &self.toasts,
+                widget::space::horizontal(),
+            )]))
+            .max_width(1000.0)
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .align_x(Alignment::Center)
+            .spacing(spacing.space_xs);
+
+        // Final outer column combining the input field and the completed keypad
         widget::column::with_capacity(2)
             .push(
                 widget::text_input("", &self.calculator.expression)
@@ -291,124 +426,7 @@ impl Application for CosmicCalculator {
                     .size(32.0)
                     .width(Length::Fill),
             )
-            .push(
-                widget::column::with_capacity(6)
-                    .push(
-                        widget::row::with_capacity(4)
-                            .push(self.button(
-                                Message::Operator(Operator::Clear),
-                                theme::Button::Destructive,
-                            ))
-                            .push(self.button(
-                                Message::Operator(Operator::Negate),
-                                theme::Button::Standard,
-                            ))
-                            .push(self.button(
-                                Message::Operator(Operator::Modulus),
-                                theme::Button::Standard,
-                            ))
-                            .push(self.button(
-                                Message::Operator(Operator::Power),
-                                theme::Button::Suggested,
-                            ))
-                            .width(Length::Fill)
-                            .height(Length::Fill)
-                            .spacing(spacing.space_xs),
-                    )
-                    .push(
-                        widget::row::with_capacity(4)
-                            .push(self.button(
-                                Message::Operator(Operator::ParenthesesOpen),
-                                theme::Button::Standard,
-                            ))
-                            .push(self.button(
-                                Message::Operator(Operator::ParenthesesClose),
-                                theme::Button::Standard,
-                            ))
-                            .push(self.button(
-                                Message::Operator(Operator::SquareRoot),
-                                theme::Button::Standard,
-                            ))
-                            .push(self.button(
-                                Message::Operator(Operator::Divide),
-                                theme::Button::Suggested,
-                            ))
-                            .width(Length::Fill)
-                            .height(Length::Fill)
-                            .spacing(spacing.space_xs),
-                    )
-                    .push(
-                        widget::row::with_capacity(4)
-                            .push(self.button(Message::Number(7.0), theme::Button::Text))
-                            .push(self.button(Message::Number(8.0), theme::Button::Text))
-                            .push(self.button(Message::Number(9.0), theme::Button::Text))
-                            .push(self.button(
-                                Message::Operator(Operator::Multiply),
-                                theme::Button::Suggested,
-                            ))
-                            .width(Length::Fill)
-                            .height(Length::Fill)
-                            .spacing(spacing.space_xs),
-                    )
-                    .push(
-                        widget::row::with_capacity(4)
-                            .push(self.button(Message::Number(4.0), theme::Button::Text))
-                            .push(self.button(Message::Number(5.0), theme::Button::Text))
-                            .push(self.button(Message::Number(6.0), theme::Button::Text))
-                            .push(self.button(
-                                Message::Operator(Operator::Subtract),
-                                theme::Button::Suggested,
-                            ))
-                            .width(Length::Fill)
-                            .height(Length::Fill)
-                            .spacing(spacing.space_xs),
-                    )
-                    .push(
-                        widget::row::with_capacity(4)
-                            .push(self.button(Message::Number(1.0), theme::Button::Text))
-                            .push(self.button(Message::Number(2.0), theme::Button::Text))
-                            .push(self.button(Message::Number(3.0), theme::Button::Text))
-                            .push(
-                                self.button(
-                                    Message::Operator(Operator::Add),
-                                    theme::Button::Suggested,
-                                ),
-                            )
-                            .width(Length::Fill)
-                            .height(Length::Fill)
-                            .spacing(spacing.space_xs),
-                    )
-                    .push(
-                        widget::row::with_capacity(4)
-                            .push(self.button(Message::Number(0.0), theme::Button::Text))
-                            .push(
-                                self.button(
-                                    Message::Operator(Operator::Point),
-                                    theme::Button::Text,
-                                ),
-                            )
-                            .push(self.button(
-                                Message::Operator(Operator::Backspace),
-                                theme::Button::Destructive,
-                            ))
-                            .push(self.button(
-                                Message::Operator(Operator::Equal),
-                                theme::Button::Suggested,
-                            ))
-                            .width(Length::Fill)
-                            .height(Length::Fill)
-                            .spacing(spacing.space_xs),
-                    )
-                    .push(widget::row(vec![widget::toaster(
-                        &self.toasts,
-                        widget::space::horizontal(),
-                    )]))
-                    .max_width(1000.0)
-                    .width(Length::Fill)
-                    .height(Length::Fill)
-                    .align_x(Alignment::Center)
-                    .spacing(spacing.space_xs),
-            )
+            .push(keypad)
             .align_x(Alignment::Center)
             .spacing(spacing.space_s)
             .padding(spacing.space_xxs)
@@ -561,6 +579,9 @@ impl Application for CosmicCalculator {
                         ")" => Some(Operator::ParenthesesClose),
                         "^" => Some(Operator::Power),
                         "=" => Some(Operator::Equal),
+                        "√" => Some(Operator::SquareRoot),
+                        "!" => Some(Operator::Factorial),
+                        "π" => Some(Operator::Pi),
                         _ => None,
                     };
                     if let Some(operator) = operator {
@@ -632,6 +653,7 @@ impl Application for CosmicCalculator {
             Message::Resized(size) => {
                 self.button_font_size = (size.height / 22.0).clamp(10.0, 48.0);
             }
+            Message::ToggleScientificMode => self.scientific_mode = !self.scientific_mode,
         }
         Task::batch(tasks)
     }

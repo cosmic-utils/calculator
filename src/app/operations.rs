@@ -47,7 +47,21 @@ impl Calculator {
             | Operator::ParenthesesOpen
             | Operator::ParenthesesClose
             | Operator::Power
-            | Operator::SquareRoot => self.add_operator(operator.clone()),
+            | Operator::SquareRoot
+            | Operator::Comma
+            | Operator::Log
+            | Operator::Ln
+            | Operator::Log2
+            | Operator::Factorial
+            | Operator::Sin
+            | Operator::Cos
+            | Operator::Tan
+            | Operator::Asin 
+            | Operator::Acos 
+            | Operator::Atan
+            | Operator::Pi
+            | Operator::E
+            | Operator::Reciprocal => self.add_operator(operator.clone()),
 
             Operator::Clear => self.clear(),
             Operator::Negate => self.toggle_sign(),
