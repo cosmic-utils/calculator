@@ -32,14 +32,14 @@ pub enum Operator {
 }
 
 impl Operator {
-    pub fn display(&self) -> &str {
+    pub fn display(&self, decimal_comma: bool) -> &str {
         match self {
             Self::Add => "+",
             Self::Subtract => "-",
             Self::Multiply => "x",
             Self::Divide => "÷",
             Self::Modulus => "%",
-            Self::Point => ".",
+            Self::Point => if decimal_comma {","} else {"."},
             Self::Equal => "=",
             Self::ParenthesesOpen => "(",
             Self::ParenthesesClose => ")",
@@ -49,7 +49,7 @@ impl Operator {
             Self::Backspace => "⌫",
             Self::Negate => "±",
             // Scientific
-            Self::Comma => ",",
+            Self::Comma => if decimal_comma {";"} else {","},
             Self::Log => "log",
             Self::Ln => "ln",
             Self::Log2 => "log2",
@@ -66,14 +66,14 @@ impl Operator {
         }
     }
 
-    pub fn expression(&self) -> &str {
+    pub fn expression(&self, decimal_comma: bool) -> &str {
         match self {
             Self::Add => "+",
             Self::Subtract => "-",
             Self::Multiply => "*",
             Self::Divide => "/",
             Self::Modulus => "%",
-            Self::Point => ".",
+            Self::Point => if decimal_comma {","} else {"."},
             Self::Equal => "=",
             Self::ParenthesesOpen => "(",
             Self::ParenthesesClose => ")",
@@ -82,10 +82,10 @@ impl Operator {
             Self::Clear => "C",
             Self::Backspace => "⌫",
             Self::Negate => "±",
-            Self::Comma => ",",
+            Self::Comma => if decimal_comma {";"} else {","},
             Self::Log => "log",
             Self::Ln => "ln",
-            Self::Log2 => "log2",
+            Self::Log2 => "log2(",
             Self::Factorial => "!",
             Self::Sin => "sin",
             Self::Cos => "cos",

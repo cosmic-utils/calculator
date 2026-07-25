@@ -29,7 +29,7 @@ impl Calculator {
     }
 
     pub fn add_operator(&mut self, operator: Operator) {
-        self.expression.push_str(operator.expression());
+        self.expression.push_str(operator.expression(self.decimal_comma));
     }
 
     pub fn on_number_press(&mut self, number: f32) {
@@ -121,6 +121,7 @@ impl Calculator {
                         | '%'
                         | '.'
                         | ','
+                        | ';'
                         | '('
                         | ')'
                         | '^'
