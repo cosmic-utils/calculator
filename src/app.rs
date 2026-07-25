@@ -124,7 +124,7 @@ impl CosmicCalculator {
 
         let label = match &message {
             Message::Number(num) => num.to_string(),
-            Message::Operator(operator) => operator.display().to_string(),
+            Message::Operator(operator) => operator.display(self.calculator.decimal_comma).to_string(),
             _ => String::new(),
         };
 
