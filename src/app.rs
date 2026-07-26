@@ -49,7 +49,7 @@ pub struct CosmicCalculator {
     toasts: widget::Toasts<Message>,
     input_id: widget::Id,
     button_font_size: f32,
-    scientific_mode: bool,
+    mode: Mode,
 }
 
 #[derive(Debug, Clone)]
@@ -71,7 +71,7 @@ pub enum Message {
     Evaluate,
     Window,
     Resized(cosmic::iced::Size),
-    ToggleScientificMode,
+    Toggle(Mode),
 }
 
 #[derive(Copy, Clone, Debug, Default, Eq, PartialEq)]
@@ -90,7 +90,13 @@ pub struct Flags {
 pub enum MenuAction {
     About,
     ClearHistory,
-    ToggleScientificMode,
+    Toggle(Mode),
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum Mode {
+    Basic,
+    Scientific
 }
 
 impl menu::action::MenuAction for MenuAction {
@@ -100,7 +106,7 @@ impl menu::action::MenuAction for MenuAction {
         match self {
             MenuAction::About => Message::ToggleContextPage(ContextPage::About),
             MenuAction::ClearHistory => Message::CleanHistory,
-            MenuAction::ToggleScientificMode => Message::ToggleScientificMode,
+            MenuAction::Toggle(mode) => Message::Toggle(*mode),
         }
     }
 }
@@ -226,7 +232,7 @@ impl Application for CosmicCalculator {
             toasts: widget::toaster::Toasts::new(Message::CloseToast),
             input_id: widget::Id::unique(),
             button_font_size: 20.0,
-            scientific_mode: false,
+            mode: Mode::Basic, // Defaults to basic mode
         };
 
         let mut tasks = vec![];
@@ -242,10 +248,16 @@ impl Application for CosmicCalculator {
     }
 
     fn header_start<'a>(&'a self) -> Vec<Element<'a, Self::Message>> {
-        let scientific_label = if self.scientific_mode {
-            fl!("basic-mode")
-        } else {
-            fl!("scientific-mode")
+        // If the current mode is basic, the button switches to scientific mode, and vice-versa
+
+        let scientific_label = match self.mode {
+            Mode::Basic => fl!("scientific-mode"),
+            Mode::Scientific => fl!("basic-mode"),
+        };
+
+        let toggle = match self.mode {
+            Mode::Basic => MenuAction::Toggle(Mode::Scientific),
+            Mode::Scientific => MenuAction::Toggle(Mode::Basic),
         };
 
         let menu_bar = menu::bar(vec![menu::Tree::with_children(
@@ -256,7 +268,7 @@ impl Application for CosmicCalculator {
                     menu::Item::Button(
                         scientific_label,
                         Some(icons::get_handle("settings-symbolic", 14)),
-                        MenuAction::ToggleScientificMode,
+                        toggle,
                     ),
                     menu::Item::Button(
                         fl!("clear-history"),
@@ -298,11 +310,16 @@ impl Application for CosmicCalculator {
     fn view<'a>(&'a self) -> Element<'a, Self::Message> {
         let spacing = cosmic::theme::active().cosmic().spacing;
 
-        // Build the keypad column
-        let mut keypad = widget::column::with_capacity(if self.scientific_mode { 11 } else { 7 });
+        // Build the keypad column with more rows in scientific mode
+        let mut keypad = widget::column::with_capacity(
+            match self.mode {
+                Mode::Basic => 7,
+                Mode::Scientific => 11,
+            }
+        );
 
         // Scientific buttons at the top of the keypad
-        if self.scientific_mode {
+        if self.mode == Mode::Scientific {
             keypad = keypad
                 .push(
                     widget::row::with_capacity(4)
@@ -653,7 +670,7 @@ impl Application for CosmicCalculator {
             Message::Resized(size) => {
                 self.button_font_size = (size.height / 22.0).clamp(10.0, 48.0);
             }
-            Message::ToggleScientificMode => self.scientific_mode = !self.scientific_mode,
+            Message::Toggle(mode) => self.mode = mode,
         }
         Task::batch(tasks)
     }
