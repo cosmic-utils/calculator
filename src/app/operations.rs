@@ -43,10 +43,10 @@ impl Calculator {
             | Operator::Multiply
             | Operator::Divide
             | Operator::Modulus
-            | Operator::Point
+            | Operator::DecimalSeparator
             | Operator::ParenthesesOpen
             | Operator::ParenthesesClose
-            | Operator::Power
+            | Operator::Exponent
             | Operator::SquareRoot
             | Operator::Comma
             | Operator::Log
@@ -56,8 +56,8 @@ impl Calculator {
             | Operator::Sin
             | Operator::Cos
             | Operator::Tan
-            | Operator::Asin 
-            | Operator::Acos 
+            | Operator::Asin
+            | Operator::Acos
             | Operator::Atan
             | Operator::Pi
             | Operator::E
@@ -87,16 +87,28 @@ impl Calculator {
 
         let before = &self.expression[..num_start];
         // A '-' is unary at the start or right after an operator or '('.
-        let is_unary_minus = before.ends_with('-')
-            && matches!(
-                before[..before.len() - 1].chars().next_back(),
-                None | Some('+' | '-' | '*' | '/' | '×' | '÷' | '%' | '^' | '(')
-            );
+        // Checks for both ASCII '-' and Unicode '−' for unary detection.
+        let is_unary_minus = before.ends_with('−')
+            || before.ends_with('-')
+                && matches!(
+                    before[..before.len() - 1].chars().next_back(),
+                    None | Some('+' | '-' | '−' | '*' | '/' | '×' | '÷' | '%' | '^' | '(')
+                );
 
         if is_unary_minus {
-            self.expression.remove(num_start - 1);
+            // Remove the last character (the minus sign)
+            // Handle both ASCII and Unicode length correctly
+            if before.ends_with('−') {
+                // Unicode minus is 3 bytes in UTF-8, but .remove takes char index
+                // We need to find the char index of the minus
+                if let Some(minus_idx) = before.char_indices().rev().next().map(|(i, _)| i) {
+                    self.expression.remove(minus_idx);
+                }
+            } else {
+                self.expression.remove(num_start - 1);
+            }
         } else {
-            self.expression.insert(num_start, '-');
+            self.expression.insert(num_start, '−'); // Use Unicode minus for consistency
         }
     }
 
@@ -106,18 +118,36 @@ impl Calculator {
     }
 
     pub(crate) fn on_input(&mut self, input: String) {
+        let normalized_input = input
+            // Multiplication to Unicode Multiplication Sign
+            // Note: '.' (period) is preserved for decimals (e.g., 3.14).
+            // '·' (Middle Dot, U+00B7) is distinct and used for multiplication.
+            .replace('*', "×")
+            .replace('x', "×")
+            .replace('X', "×")
+            .replace('·', "×") // Middle Dot
+            // Division to Unicode Division Sign
+            .replace('/', "÷")
+            .replace(':', "÷")
+            // Power
+            .replace("**", "^")
+            // Dashes to Unicode Minus Sign
+            .replace('-', "−") // Hyphen-Minus
+            .replace('–', "−") // En Dash
+            .replace('—', "−"); // Em Dash
+
         // qalc validates the expression itself, so keep this filter permissive:
         // allow letters (sin, pi), whitespace, '!', and ',' for decimal-comma locales.
-        if input.chars().all(|c| {
+        // Normalized Unicode symbols (−, ×, ÷) are now expected.
+        if normalized_input.chars().all(|c| {
             c.is_alphanumeric()
                 || c.is_whitespace()
                 || matches!(
                     c,
-                    '+' | '-'
-                        | '*'
+                    '+' | '−'
+                        | '×'
                         | '/'
                         | '÷'
-                        | '×'
                         | '%'
                         | '.'
                         | ','
@@ -130,7 +160,7 @@ impl Calculator {
                         | '\u{8}'
                 )
         }) {
-            self.expression = input;
+            self.expression = normalized_input;
         }
     }
 }
