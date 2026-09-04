@@ -1,11 +1,11 @@
 app-title = Calculatrice
 about = À propos
-view = Visualiser
+view = Affichage
 delete = Supprimer
-clear-history = Effacer l'historique
-malformed-expression = Expression malformée
+clear-history = Effacer l’historique
+malformed-expression = Expression incorrecte
 
 ## About
 repository = Dépot
-support = Support
+support = Assistance
 website = Site web
