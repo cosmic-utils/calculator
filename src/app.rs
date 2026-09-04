@@ -275,6 +275,7 @@ impl Application for CosmicCalculator {
                         Some(icons::get_handle("large-brush-symbolic", 14)),
                         MenuAction::ClearHistory,
                     ),
+                    menu::Item::Divider,
                     menu::Item::Button(
                         fl!("about"),
                         Some(icons::get_handle("settings-symbolic", 14)),
