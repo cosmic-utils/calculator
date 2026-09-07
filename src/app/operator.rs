@@ -14,17 +14,32 @@ pub enum Operator {
     ParenthesesClose,
     Power,
     SquareRoot,
+    // Scientific
+    Comma,
+    Log,
+    Ln,
+    Log2,
+    Factorial,
+    Sin,
+    Cos,
+    Tan,
+    Asin,
+    Acos,
+    Atan,
+    Pi,
+    E,
+    Reciprocal,
 }
 
 impl Operator {
-    pub fn display(&self) -> &str {
+    pub fn display(&self, decimal_comma: bool) -> &str {
         match self {
             Self::Add => "+",
             Self::Subtract => "-",
             Self::Multiply => "x",
             Self::Divide => "÷",
             Self::Modulus => "%",
-            Self::Point => ".",
+            Self::Point => if decimal_comma {","} else {"."},
             Self::Equal => "=",
             Self::ParenthesesOpen => "(",
             Self::ParenthesesClose => ")",
@@ -33,17 +48,32 @@ impl Operator {
             Self::Clear => "C",
             Self::Backspace => "⌫",
             Self::Negate => "±",
+            // Scientific
+            Self::Comma => if decimal_comma {";"} else {","},
+            Self::Log => "log",
+            Self::Ln => "ln",
+            Self::Log2 => "log2",
+            Self::Factorial => "!",
+            Self::Sin => "sin",
+            Self::Cos => "cos",
+            Self::Tan => "tan",
+            Self::Asin => "asin",
+            Self::Acos => "acos",
+            Self::Atan => "atan",
+            Self::Pi => "π",
+            Self::E => "e",
+            Self::Reciprocal => "1/x",
         }
     }
 
-    pub fn expression(&self) -> &str {
+    pub fn expression(&self, decimal_comma: bool) -> &str {
         match self {
             Self::Add => "+",
             Self::Subtract => "-",
             Self::Multiply => "*",
             Self::Divide => "/",
             Self::Modulus => "%",
-            Self::Point => ".",
+            Self::Point => if decimal_comma {","} else {"."},
             Self::Equal => "=",
             Self::ParenthesesOpen => "(",
             Self::ParenthesesClose => ")",
@@ -52,6 +82,20 @@ impl Operator {
             Self::Clear => "C",
             Self::Backspace => "⌫",
             Self::Negate => "±",
+            Self::Comma => if decimal_comma {";"} else {","},
+            Self::Log => "log",
+            Self::Ln => "ln",
+            Self::Log2 => "log2(",
+            Self::Factorial => "!",
+            Self::Sin => "sin",
+            Self::Cos => "cos",
+            Self::Tan => "tan",
+            Self::Asin => "asin",
+            Self::Acos => "acos",
+            Self::Atan => "atan",
+            Self::Pi => "π",
+            Self::E => "e",
+            Self::Reciprocal => "⁻¹",
         }
     }
 }
