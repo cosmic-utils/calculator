@@ -5,7 +5,10 @@ delete = Удалить
 clear-history = Очистить историю
 malformed-expression = Некорректное выражение
 
+basic-mode = Простой режим
+scientific-mode = Инженерный режим
+
 ## About
 repository = Репозиторий
-support = Поддержать
+support = Поддержка
 website = Веб-сайт
