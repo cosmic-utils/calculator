@@ -369,7 +369,7 @@ impl Application for CosmicCalculator {
                     .push(self.button(Message::Operator(Operator::Clear), theme::Button::Destructive))
                     .push(self.button(Message::Operator(Operator::Negate), theme::Button::Standard))
                     .push(self.button(Message::Operator(Operator::Modulus), theme::Button::Standard))
-                    .push(self.button(Message::Operator(Operator::Power), theme::Button::Suggested))
+                    .push(self.button(Message::Operator(Operator::Exponent), theme::Button::Suggested))
                     .width(Length::Fill)
                     .height(Length::Fill)
                     .spacing(spacing.space_xs),
@@ -417,7 +417,7 @@ impl Application for CosmicCalculator {
             .push(
                 widget::row::with_capacity(4)
                     .push(self.button(Message::Number(0.0), theme::Button::Text))
-                    .push(self.button(Message::Operator(Operator::Point), theme::Button::Text))
+                    .push(self.button(Message::Operator(Operator::DecimalSeparator), theme::Button::Text))
                     .push(self.button(Message::Operator(Operator::Backspace), theme::Button::Destructive))
                     .push(self.button(Message::Operator(Operator::Equal), theme::Button::Suggested))
                     .width(Length::Fill)
@@ -589,13 +589,13 @@ impl Application for CosmicCalculator {
                 if let Some(c) = character {
                     let operator = match c.as_str() {
                         "+" => Some(Operator::Add),
-                        "-" => Some(Operator::Subtract),
+                        "-" | "−" => Some(Operator::Subtract),
                         "*" | "×" => Some(Operator::Multiply),
                         "/" | "÷" => Some(Operator::Divide),
                         "%" => Some(Operator::Modulus),
                         "(" => Some(Operator::ParenthesesOpen),
                         ")" => Some(Operator::ParenthesesClose),
-                        "^" => Some(Operator::Power),
+                        "^" => Some(Operator::Exponent),
                         "=" => Some(Operator::Equal),
                         "√" => Some(Operator::SquareRoot),
                         "!" => Some(Operator::Factorial),
@@ -696,7 +696,12 @@ impl Application for CosmicCalculator {
 
         let subscriptions = vec![
             event::listen_with(|event, status, _id| match event {
-                Event::Keyboard(KeyEvent::KeyPressed { key, modifiers, text, .. }) => match status {
+                Event::Keyboard(KeyEvent::KeyPressed {
+                    key,
+                    modifiers,
+                    text,
+                    ..
+                }) => match status {
                     event::Status::Ignored => {
                         Some(Message::Key(modifiers, key, text.map(|t| t.to_string())))
                     }

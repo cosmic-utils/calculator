@@ -5,14 +5,14 @@ pub enum Operator {
     Multiply,
     Divide,
     Modulus,
-    Point,
+    DecimalSeparator,
     Equal,
     Clear,
     Backspace,
     Negate,
     ParenthesesOpen,
     ParenthesesClose,
-    Power,
+    Exponent,
     SquareRoot,
     // Scientific
     Comma,
@@ -35,15 +35,15 @@ impl Operator {
     pub fn display(&self, decimal_comma: bool) -> &str {
         match self {
             Self::Add => "+",
-            Self::Subtract => "-",
-            Self::Multiply => "x",
-            Self::Divide => "÷",
+            Self::Subtract => "−", // Unicode Minus Sign
+            Self::Multiply => "×", // Unicode Multiplication Sign
+            Self::Divide => "÷",   // Unicode Division Sign
             Self::Modulus => "%",
-            Self::Point => if decimal_comma {","} else {"."},
+            Self::DecimalSeparator => if decimal_comma {","} else {"."},
             Self::Equal => "=",
             Self::ParenthesesOpen => "(",
             Self::ParenthesesClose => ")",
-            Self::Power => "^",
+            Self::Exponent => "xʸ",
             Self::SquareRoot => "√",
             Self::Clear => "C",
             Self::Backspace => "⌫",
@@ -69,15 +69,15 @@ impl Operator {
     pub fn expression(&self, decimal_comma: bool) -> &str {
         match self {
             Self::Add => "+",
-            Self::Subtract => "-",
-            Self::Multiply => "*",
-            Self::Divide => "/",
+            Self::Subtract => "−", // Unicode Minus Sign
+            Self::Multiply => "×", // Unicode Multiplication Sign
+            Self::Divide => "÷",   // Unicode Division Sign
             Self::Modulus => "%",
-            Self::Point => if decimal_comma {","} else {"."},
+            Self::DecimalSeparator => if decimal_comma {","} else {"."},
             Self::Equal => "=",
             Self::ParenthesesOpen => "(",
             Self::ParenthesesClose => ")",
-            Self::Power => "^",
+            Self::Exponent => "^",
             Self::SquareRoot => "√",
             Self::Clear => "C",
             Self::Backspace => "⌫",
