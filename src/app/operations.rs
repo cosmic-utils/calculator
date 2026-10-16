@@ -40,6 +40,47 @@ impl Calculator {
         self.expression.push_str(&number.to_string());
     }
 
+    /// Expression to evaluate: the exact form of the last result replaces the
+    /// displayed one when it is the untouched prefix and an operator follows.
+    pub fn eval_expression(&self) -> String {
+        let expression = self.expression.trim();
+        let chainable =
+            self.chain_exact && !self.outcome.is_empty() && !self.outcome_exact.is_empty();
+        match expression.strip_prefix(self.outcome.as_str()) {
+            Some(tail)
+                if chainable
+                    && tail.starts_with(['+', '-', '*', '/', '×', '÷', '%', '^', '!']) =>
+            {
+                format!("({}){}", self.outcome_exact, tail)
+            }
+            _ => expression.to_string(),
+        }
+    }
+
+    /// Builds the qalc command: exact output for chaining, 18 decimals for display.
+    pub fn qalc_command(&self, exact: bool) -> Command {
+        let mut command = Command::new("qalc");
+        // Never let qalc block waiting on stdin.
+        command.stdin(Stdio::null());
+        command.env("LANG", "C");
+        command.args(["-t", "-u8", "-set", "precision 50"]);
+        if exact {
+            command.args(["-set", "fr exact", "-set", "maxdeci off"]);
+            command.args(["-set", "unicode off"]);
+        } else {
+            command.args(["-set", "maxdeci 18"]);
+        }
+        if self.decimal_comma {
+            command.args(["-set", "decimal comma on"]);
+        } else {
+            command.args(["-set", "decimal comma off"]);
+        }
+        if autocalc() {
+            command.args(["-set", "autocalc off"]);
+        }
+        command
+    }
+
     pub fn on_operator_press(&mut self, operator: &Operator) -> Option<Message> {
         match operator {
             Operator::Add
@@ -142,6 +183,16 @@ impl Calculator {
             self.expression = input;
         }
     }
+}
+
+/// Cleans qalc stdout into one line, stripping any interactive-prompt artifact.
+pub fn parse_output(stdout: Vec<u8>) -> String {
+    String::from_utf8(stdout)
+        .unwrap_or_default()
+        .replace(['\n', '\r'], "")
+        .replace("> ", "")
+        .trim()
+        .to_string()
 }
 
 /// Returns the version of the `qalc` command-line tool.

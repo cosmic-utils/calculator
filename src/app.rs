@@ -2,7 +2,6 @@
 
 use std::any::TypeId;
 use std::collections::HashMap;
-use std::process::{Command, Stdio};
 
 use crate::app::{config::CONFIG_VERSION, operations::Calculator, operator::Operator};
 use crate::core::{icons, key_binds::key_binds};
@@ -519,43 +518,11 @@ impl Application for CosmicCalculator {
                     return Task::batch(tasks);
                 }
 
-                // Chain on the exact form of the previous result when it is the prefix.
-                let calc = &self.calculator;
-                let eval_expression = if calc.chain_exact
-                    && !calc.outcome.is_empty()
-                    && !calc.outcome_exact.is_empty()
-                    && calc.expression.starts_with(&calc.outcome)
-                {
-                    format!(
-                        "({}){}",
-                        calc.outcome_exact,
-                        &calc.expression[calc.outcome.len()..]
-                    )
-                } else {
-                    calc.expression.trim().to_string()
-                };
+                let eval_expression = self.calculator.eval_expression();
+                let mut command = self.calculator.qalc_command(false);
+                command.arg(&eval_expression);
 
-                let mut command = Command::new("qalc");
-                // Never let qalc block waiting on stdin.
-                command.stdin(Stdio::null());
-                command.args(["-t"]);
-                command.args(["-u8"]);
-                command.args(["-set", "maxdeci 18"]);
-                command.args(["-set", "precision 50"]);
-
-                if self.calculator.decimal_comma {
-                    command.args(["-set", "decimal comma on"]);
-                } else {
-                    command.args(["-set", "decimal comma off"]);
-                }
-
-                if operations::autocalc() {
-                    command.args(["-set", "autocalc off"]);
-                }
-
-                command.args([&eval_expression]);
-
-                let Ok(output) = command.env("LANG", "C").output() else {
+                let Ok(output) = command.output() else {
                     tracing::error!("Failed to execute qalc command");
                     tasks.push(self.update(Message::ShowToast(
                         "Failed to execute qalc command".to_string(),
@@ -563,13 +530,7 @@ impl Application for CosmicCalculator {
                     return Task::batch(tasks);
                 };
 
-                let outcome = String::from_utf8(output.stdout)
-                    .unwrap_or_default()
-                    .replace(['\n', '\r'], "")
-                    // Strip any stray interactive-prompt artifact.
-                    .replace("> ", "")
-                    .trim()
-                    .to_string();
+                let outcome = operations::parse_output(output.stdout);
 
                 // qalc writes warnings to stderr even on success, so only treat the
                 // run as failed when stdout has no usable result.
@@ -592,34 +553,13 @@ impl Application for CosmicCalculator {
                 self.calculator.outcome = outcome.clone();
 
                 // Second pass: keep an exact (or high-precision) value for chaining.
-                let mut exact_command = Command::new("qalc");
-                exact_command.stdin(Stdio::null());
-                exact_command.args(["-t", "-u8"]);
-                exact_command.args(["-set", "fr exact"]);
-                exact_command.args(["-set", "precision 50"]);
-                exact_command.args(["-set", "maxdeci off"]);
-                exact_command.args(["-set", "unicode off"]);
-                if self.calculator.decimal_comma {
-                    exact_command.args(["-set", "decimal comma on"]);
-                } else {
-                    exact_command.args(["-set", "decimal comma off"]);
-                }
-                if operations::autocalc() {
-                    exact_command.args(["-set", "autocalc off"]);
-                }
-                exact_command.args([&eval_expression]);
-                let exact = exact_command
-                    .env("LANG", "C")
+                let exact = self
+                    .calculator
+                    .qalc_command(true)
+                    .arg(&eval_expression)
                     .output()
                     .ok()
-                    .map(|output| {
-                        String::from_utf8(output.stdout)
-                            .unwrap_or_default()
-                            .replace(['\n', '\r'], "")
-                            .replace("> ", "")
-                            .trim()
-                            .to_string()
-                    })
+                    .map(|output| operations::parse_output(output.stdout))
                     .filter(|exact| !exact.is_empty() && exact.chars().count() <= 1000);
                 self.calculator.outcome_exact = exact.unwrap_or_else(|| outcome.clone());
                 self.calculator.chain_exact = true;
