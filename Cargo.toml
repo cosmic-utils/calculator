@@ -13,9 +13,23 @@ serde = { version = "1.0.208", features = ["derive"] }
 tracing = "0.1.41"
 tracing-subscriber = { version = "0.3.20", features = ["env-filter"] }
 
+# See https://github.com/pop-os/libcosmic/blob/master/Cargo.toml for available features.
 [dependencies.libcosmic]
 git = "https://github.com/pop-os/libcosmic.git"
-features = ["tokio", "winit", "about", "wayland"]
+features = [
+    # About widget for the app
+    "about",
+    # Support creating additional application windows.
+    "multi-window",
+    # On app startup, focuses an existing instance if the app is already open
+    "single-instance",
+    # Uses tokio as the executor for the runtime
+    "tokio",
+    # Windowing support for X11, Windows, Mac, & Redox
+    "winit",
+    # GPU-accelerated rendering
+    "wgpu",
+]
 
 [dependencies.i18n-embed]
 version = "0.14"
