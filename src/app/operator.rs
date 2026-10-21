@@ -8,6 +8,7 @@ pub enum Operator {
     Point,
     Equal,
     Clear,
+    ClearEntry,
     Backspace,
     Negate,
     ParenthesesOpen,
@@ -69,6 +70,7 @@ impl Operator {
             Self::Power => "^",
             Self::SquareRoot => "√",
             Self::Clear => "C",
+            Self::ClearEntry => "CE",
             Self::Backspace => "⌫",
             Self::Negate => "±",
             // Scientific
@@ -126,6 +128,7 @@ impl Operator {
             Self::Power => "^",
             Self::SquareRoot => "√",
             Self::Clear => "C",
+            Self::ClearEntry => "CE",
             Self::Backspace => "⌫",
             Self::Negate => "±",
             Self::Comma => if decimal_comma {";"} else {","},

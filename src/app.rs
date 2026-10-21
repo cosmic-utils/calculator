@@ -696,7 +696,15 @@ impl Application for CosmicCalculator {
                     Key::Named(Named::Backspace) => {
                         return self.update(Message::Operator(Operator::Backspace));
                     }
-                    Key::Named(Named::Delete) | Key::Named(Named::Escape) => {
+                    // Delete and F9 are CE and ± in Windows Calculator, and laptop
+                    // keypads with CE and +/- keys send them.
+                    Key::Named(Named::Delete) => {
+                        return self.update(Message::Operator(Operator::ClearEntry));
+                    }
+                    Key::Named(Named::F9) => {
+                        return self.update(Message::Operator(Operator::Negate));
+                    }
+                    Key::Named(Named::Escape) => {
                         return self.update(Message::Operator(Operator::Clear));
                     }
                     _ => {}
