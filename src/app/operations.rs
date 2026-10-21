@@ -106,7 +106,29 @@ impl Calculator {
             | Operator::Atan
             | Operator::Pi
             | Operator::E
-            | Operator::Reciprocal => self.add_operator(operator.clone()),
+            | Operator::Reciprocal
+            | Operator::Sinh
+            | Operator::Cosh
+            | Operator::Tanh
+            | Operator::Degree
+            | Operator::Square
+            | Operator::Cube
+            | Operator::PowerOfTen
+            | Operator::Exp
+            | Operator::Abs
+            | Operator::CubeRoot
+            | Operator::Sum
+            | Operator::Mean
+            | Operator::Median
+            | Operator::Mode
+            | Operator::Min
+            | Operator::Max
+            | Operator::StdDev
+            | Operator::StdDevPopulation
+            | Operator::Variance
+            | Operator::VariancePopulation
+            | Operator::Combinations
+            | Operator::Permutations => self.add_operator(operator.clone()),
 
             Operator::Clear => self.clear(),
             Operator::Negate => self.toggle_sign(),
@@ -177,6 +199,7 @@ impl Calculator {
                         | '^'
                         | '√'
                         | '⁻'
+                        | '°'
                         | '!'
                         | '\u{8}'
                 )
