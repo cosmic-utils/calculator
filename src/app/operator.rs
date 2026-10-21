@@ -83,7 +83,7 @@ impl Operator {
             Self::Backspace => "⌫",
             Self::Negate => "±",
             Self::Comma => if decimal_comma {";"} else {","},
-            Self::Log => "log",
+            Self::Log => "log10(",
             Self::Ln => "ln",
             Self::Log2 => "log2(",
             Self::Factorial => "!",
