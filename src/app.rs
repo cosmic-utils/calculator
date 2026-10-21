@@ -29,6 +29,7 @@ use cosmic::{
         nav_bar,
     },
 };
+use serde::{Deserialize, Serialize};
 
 mod config;
 mod operations;
@@ -50,7 +51,6 @@ pub struct CosmicCalculator {
     button_font_size: f32,
     input_font_size: f32,
     previous: String,
-    mode: Mode,
 }
 
 #[derive(Debug, Clone)]
@@ -72,7 +72,7 @@ pub enum Message {
     Evaluate,
     Window,
     Resized(cosmic::iced::Size),
-    Toggle(Mode),
+    SetMode(Option<Mode>),
 }
 
 #[derive(Copy, Clone, Debug, Default, Eq, PartialEq)]
@@ -91,14 +91,50 @@ pub struct Flags {
 pub enum MenuAction {
     About,
     ClearHistory,
-    Toggle(Mode),
+    SetMode(Option<Mode>),
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+/// The panels shown beside the basic keypad. Unless the user picks one from
+/// the menu, the mode follows the keypad width.
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Deserialize, Serialize)]
 pub enum Mode {
     Basic,
-    Scientific
+    Scientific,
+    Statistics,
 }
+
+impl Mode {
+    /// Keypad width from which this mode's panels fit comfortably.
+    const fn min_width(self) -> f32 {
+        match self {
+            Mode::Basic => 0.0,
+            Mode::Scientific => 480.0,
+            Mode::Statistics => 600.0,
+        }
+    }
+
+    /// The most complete mode whose panels fit in `width`.
+    fn for_width(width: f32) -> Self {
+        [Mode::Statistics, Mode::Scientific]
+            .into_iter()
+            .find(|mode| width >= mode.min_width())
+            .unwrap_or(Mode::Basic)
+    }
+
+    /// Button columns across all the panels of this mode.
+    const fn columns(self) -> u16 {
+        match self {
+            Mode::Basic => 4,
+            Mode::Scientific => 8,
+            Mode::Statistics => 10,
+        }
+    }
+}
+
+/// Rows in every keypad panel, so that panels side by side line up.
+const KEYPAD_ROWS: usize = 6;
+/// Buttons stop growing past this width, so a maximized window stays usable.
+const MAX_COLUMN_WIDTH: f32 = 250.0;
 
 impl menu::action::MenuAction for MenuAction {
     type Message = Message;
@@ -107,7 +143,7 @@ impl menu::action::MenuAction for MenuAction {
         match self {
             MenuAction::About => Message::ToggleContextPage(ContextPage::About),
             MenuAction::ClearHistory => Message::CleanHistory,
-            MenuAction::Toggle(mode) => Message::Toggle(*mode),
+            MenuAction::SetMode(mode) => Message::SetMode(*mode),
         }
     }
 }
@@ -126,7 +162,12 @@ impl menu::action::MenuAction for NavMenuAction {
 }
 
 impl CosmicCalculator {
-    pub fn button<'a>(&'a self, message: Message, class: theme::Button) -> Element<'a, Message> {
+    pub fn button<'a>(
+        &'a self,
+        message: Message,
+        class: theme::Button,
+        font_size: f32,
+    ) -> Element<'a, Message> {
         let theme = cosmic::theme::active();
 
         let label = match &message {
@@ -144,7 +185,7 @@ impl CosmicCalculator {
         widget::button::custom(
             widget::container(
                 widget::text(label)
-                    .size(self.button_font_size)
+                    .size(font_size)
                     .class(theme::Text::Color(text_color.into()))
                     .line_height(1.0),
             )
@@ -158,6 +199,117 @@ impl CosmicCalculator {
         .height(Length::Fill)
         .on_press(message)
         .into()
+    }
+
+    /// Lays buttons out in a grid. A panel's width is proportional to its
+    /// column count, so buttons line up across panels placed side by side.
+    fn panel<const COLUMNS: usize>(
+        &self,
+        rows: [[(Message, theme::Button); COLUMNS]; KEYPAD_ROWS],
+        font_size: f32,
+    ) -> Element<'_, Message> {
+        let spacing = cosmic::theme::active().cosmic().spacing;
+        let rows = rows.into_iter().map(|row| {
+            widget::row(
+                row.into_iter()
+                    .map(|(message, class)| self.button(message, class, font_size)),
+            )
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .spacing(spacing.space_xs)
+            .into()
+        });
+        widget::column(rows)
+            .width(Length::FillPortion(COLUMNS as u16))
+            .height(Length::Fill)
+            .spacing(spacing.space_xs)
+            .into()
+    }
+
+    fn function_panel<const COLUMNS: usize>(
+        &self,
+        rows: [[Operator; COLUMNS]; KEYPAD_ROWS],
+        font_size: f32,
+    ) -> Element<'_, Message> {
+        let rows = rows.map(|row| {
+            row.map(|operator| (Message::Operator(operator), theme::Button::Standard))
+        });
+        self.panel(rows, font_size)
+    }
+
+    fn basic_panel(&self, font_size: f32) -> Element<'_, Message> {
+        use theme::Button::{Destructive, Standard, Suggested, Text};
+        let operator = Message::Operator;
+        let number = Message::Number;
+        self.panel(
+            [
+                [
+                    (operator(Operator::Clear), Destructive),
+                    (operator(Operator::Negate), Standard),
+                    (operator(Operator::Modulus), Standard),
+                    (operator(Operator::Power), Suggested),
+                ],
+                [
+                    (operator(Operator::ParenthesesOpen), Standard),
+                    (operator(Operator::ParenthesesClose), Standard),
+                    (operator(Operator::SquareRoot), Standard),
+                    (operator(Operator::Divide), Suggested),
+                ],
+                [
+                    (number(7.0), Text),
+                    (number(8.0), Text),
+                    (number(9.0), Text),
+                    (operator(Operator::Multiply), Suggested),
+                ],
+                [
+                    (number(4.0), Text),
+                    (number(5.0), Text),
+                    (number(6.0), Text),
+                    (operator(Operator::Subtract), Suggested),
+                ],
+                [
+                    (number(1.0), Text),
+                    (number(2.0), Text),
+                    (number(3.0), Text),
+                    (operator(Operator::Add), Suggested),
+                ],
+                [
+                    (number(0.0), Text),
+                    (operator(Operator::Point), Text),
+                    (operator(Operator::Backspace), Destructive),
+                    (operator(Operator::Equal), Suggested),
+                ],
+            ],
+            font_size,
+        )
+    }
+
+    fn scientific_panel(&self, font_size: f32) -> Element<'_, Message> {
+        self.function_panel(
+            [
+                [Operator::Sin, Operator::Cos, Operator::Tan, Operator::Degree],
+                [Operator::Asin, Operator::Acos, Operator::Atan, Operator::Pi],
+                [Operator::Sinh, Operator::Cosh, Operator::Tanh, Operator::E],
+                [Operator::Square, Operator::Cube, Operator::PowerOfTen, Operator::Exp],
+                [Operator::Log, Operator::Ln, Operator::Log2, Operator::Reciprocal],
+                [Operator::Abs, Operator::CubeRoot, Operator::Factorial, Operator::Comma],
+            ],
+            font_size,
+        )
+    }
+
+    fn statistics_panel(&self, font_size: f32) -> Element<'_, Message> {
+        self.function_panel(
+            [
+                [Operator::Sum, Operator::Mean],
+                [Operator::Median, Operator::Mode],
+                [Operator::Min, Operator::Max],
+                [Operator::StdDev, Operator::StdDevPopulation],
+                [Operator::Variance, Operator::VariancePopulation],
+                [Operator::Combinations, Operator::Permutations],
+            ],
+            font_size,
+        )
     }
 }
 
@@ -236,7 +388,6 @@ impl Application for CosmicCalculator {
             button_font_size: 20.0,
             input_font_size: 32.0,
             previous: String::new(),
-            mode: Mode::Basic, // Defaults to basic mode
         };
 
         let mut tasks = vec![];
@@ -252,16 +403,8 @@ impl Application for CosmicCalculator {
     }
 
     fn header_start<'a>(&'a self) -> Vec<Element<'a, Self::Message>> {
-        // If the current mode is basic, the button switches to scientific mode, and vice-versa
-
-        let scientific_label = match self.mode {
-            Mode::Basic => fl!("scientific-mode"),
-            Mode::Scientific => fl!("basic-mode"),
-        };
-
-        let toggle = match self.mode {
-            Mode::Basic => MenuAction::Toggle(Mode::Scientific),
-            Mode::Scientific => MenuAction::Toggle(Mode::Basic),
+        let mode_item = |label, mode| {
+            menu::Item::CheckBox(label, None, self.config.mode == mode, MenuAction::SetMode(mode))
         };
 
         let menu_bar = menu::bar(vec![menu::Tree::with_children(
@@ -269,11 +412,11 @@ impl Application for CosmicCalculator {
             menu::items(
                 &self.key_binds,
                 vec![
-                    menu::Item::Button(
-                        scientific_label,
-                        Some(icons::get_handle("settings-symbolic", 14)),
-                        toggle,
-                    ),
+                    mode_item(fl!("automatic-mode"), None),
+                    mode_item(fl!("basic-mode"), Some(Mode::Basic)),
+                    mode_item(fl!("scientific-mode"), Some(Mode::Scientific)),
+                    mode_item(fl!("statistics-mode"), Some(Mode::Statistics)),
+                    menu::Item::Divider,
                     menu::Item::Button(
                         fl!("clear-history"),
                         Some(icons::get_handle("large-brush-symbolic", 14)),
@@ -315,127 +458,44 @@ impl Application for CosmicCalculator {
     fn view<'a>(&'a self) -> Element<'a, Self::Message> {
         let spacing = cosmic::theme::active().cosmic().spacing;
 
-        // Build the keypad column with more rows in scientific mode
-        let mut keypad = widget::column::with_capacity(
-            match self.mode {
-                Mode::Basic => 7,
-                Mode::Scientific => 11,
+        // More panels appear beside the basic keypad as it gets wider, unless
+        // the user picked a mode, which is then squeezed or stretched to fit.
+        let panels = widget::responsive(move |size| {
+            let mode = self.config.mode.unwrap_or_else(|| Mode::for_width(size.width));
+            let columns = mode.columns();
+            let width = size.width.min(f32::from(columns) * MAX_COLUMN_WIDTH);
+            let column_width =
+                (width - f32::from(spacing.space_xs) * f32::from(columns - 1)) / f32::from(columns);
+            // Labels shrink with the buttons; function names are longer than digits.
+            let font_size = self.button_font_size.min(column_width / 2.0);
+            let function_font_size = self.button_font_size.min(column_width / 4.0);
+
+            let mut panels = widget::row::with_capacity(3);
+            if mode == Mode::Statistics {
+                panels = panels.push(self.statistics_panel(function_font_size));
             }
-        );
+            if mode != Mode::Basic {
+                panels = panels.push(self.scientific_panel(function_font_size));
+            }
+            let panels = panels
+                .push(self.basic_panel(font_size))
+                .width(width)
+                .height(Length::Fill)
+                .spacing(spacing.space_xs);
+            widget::container(panels)
+                .center_x(Length::Fill)
+                .height(Length::Fill)
+                .into()
+        });
 
-        // Scientific buttons at the top of the keypad
-        if self.mode == Mode::Scientific {
-            keypad = keypad
-                .push(
-                    widget::row::with_capacity(4)
-                        .push(self.button(Message::Operator(Operator::Log), theme::Button::Standard))
-                        .push(self.button(Message::Operator(Operator::Ln), theme::Button::Standard))
-                        .push(self.button(Message::Operator(Operator::Log2), theme::Button::Standard))
-                        .push(self.button(Message::Operator(Operator::Factorial), theme::Button::Standard))
-                        .width(Length::Fill)
-                        .height(Length::Fill)
-                        .spacing(spacing.space_xs),
-                )
-                .push(
-                    widget::row::with_capacity(4)
-                        .push(self.button(Message::Operator(Operator::Sin), theme::Button::Standard))
-                        .push(self.button(Message::Operator(Operator::Cos), theme::Button::Standard))
-                        .push(self.button(Message::Operator(Operator::Tan), theme::Button::Standard))
-                        .push(self.button(Message::Operator(Operator::Comma), theme::Button::Standard))
-                        .width(Length::Fill)
-                        .height(Length::Fill)
-                        .spacing(spacing.space_xs),
-                )
-                .push(
-                    widget::row::with_capacity(4)
-                        .push(self.button(Message::Operator(Operator::Asin), theme::Button::Standard))
-                        .push(self.button(Message::Operator(Operator::Acos), theme::Button::Standard))
-                        .push(self.button(Message::Operator(Operator::Atan), theme::Button::Standard))
-                        .push(self.button(Message::Operator(Operator::Reciprocal), theme::Button::Standard))
-                        .width(Length::Fill)
-                        .height(Length::Fill)
-                        .spacing(spacing.space_xs),
-                )
-                .push(
-                    widget::row::with_capacity(4)
-                        .push(self.button(Message::Operator(Operator::E), theme::Button::Standard))
-                        .push(self.button(Message::Operator(Operator::Pi), theme::Button::Standard))
-                        .width(Length::Fill)
-                        .height(Length::Fill)
-                        .spacing(spacing.space_xs),
-                );
-        }
-
-        // Standard buttons and toaster to the keypad
-        keypad = keypad
-            .push(
-                widget::row::with_capacity(4)
-                    .push(self.button(Message::Operator(Operator::Clear), theme::Button::Destructive))
-                    .push(self.button(Message::Operator(Operator::Negate), theme::Button::Standard))
-                    .push(self.button(Message::Operator(Operator::Modulus), theme::Button::Standard))
-                    .push(self.button(Message::Operator(Operator::Power), theme::Button::Suggested))
-                    .width(Length::Fill)
-                    .height(Length::Fill)
-                    .spacing(spacing.space_xs),
-            )
-            .push(
-                widget::row::with_capacity(4)
-                    .push(self.button(Message::Operator(Operator::ParenthesesOpen), theme::Button::Standard))
-                    .push(self.button(Message::Operator(Operator::ParenthesesClose), theme::Button::Standard))
-                    .push(self.button(Message::Operator(Operator::SquareRoot), theme::Button::Standard))
-                    .push(self.button(Message::Operator(Operator::Divide), theme::Button::Suggested))
-                    .width(Length::Fill)
-                    .height(Length::Fill)
-                    .spacing(spacing.space_xs),
-            )
-            .push(
-                widget::row::with_capacity(4)
-                    .push(self.button(Message::Number(7.0), theme::Button::Text))
-                    .push(self.button(Message::Number(8.0), theme::Button::Text))
-                    .push(self.button(Message::Number(9.0), theme::Button::Text))
-                    .push(self.button(Message::Operator(Operator::Multiply), theme::Button::Suggested))
-                    .width(Length::Fill)
-                    .height(Length::Fill)
-                    .spacing(spacing.space_xs),
-            )
-            .push(
-                widget::row::with_capacity(4)
-                    .push(self.button(Message::Number(4.0), theme::Button::Text))
-                    .push(self.button(Message::Number(5.0), theme::Button::Text))
-                    .push(self.button(Message::Number(6.0), theme::Button::Text))
-                    .push(self.button(Message::Operator(Operator::Subtract), theme::Button::Suggested))
-                    .width(Length::Fill)
-                    .height(Length::Fill)
-                    .spacing(spacing.space_xs),
-            )
-            .push(
-                widget::row::with_capacity(4)
-                    .push(self.button(Message::Number(1.0), theme::Button::Text))
-                    .push(self.button(Message::Number(2.0), theme::Button::Text))
-                    .push(self.button(Message::Number(3.0), theme::Button::Text))
-                    .push(self.button(Message::Operator(Operator::Add), theme::Button::Suggested))
-                    .width(Length::Fill)
-                    .height(Length::Fill)
-                    .spacing(spacing.space_xs),
-            )
-            .push(
-                widget::row::with_capacity(4)
-                    .push(self.button(Message::Number(0.0), theme::Button::Text))
-                    .push(self.button(Message::Operator(Operator::Point), theme::Button::Text))
-                    .push(self.button(Message::Operator(Operator::Backspace), theme::Button::Destructive))
-                    .push(self.button(Message::Operator(Operator::Equal), theme::Button::Suggested))
-                    .width(Length::Fill)
-                    .height(Length::Fill)
-                    .spacing(spacing.space_xs),
-            )
+        let keypad = widget::column::with_capacity(2)
+            .push(panels)
             .push(widget::row(vec![widget::toaster(
                 &self.toasts,
                 widget::space::horizontal(),
             )]))
-            .max_width(1000.0)
             .width(Length::Fill)
             .height(Length::Fill)
-            .align_x(Alignment::Center)
             .spacing(spacing.space_xs);
 
         // Final outer column combining the input field and the completed keypad
@@ -636,7 +696,15 @@ impl Application for CosmicCalculator {
                     Key::Named(Named::Backspace) => {
                         return self.update(Message::Operator(Operator::Backspace));
                     }
-                    Key::Named(Named::Delete) | Key::Named(Named::Escape) => {
+                    // Delete and F9 are CE and ± in Windows Calculator, and laptop
+                    // keypads with CE and +/- keys send them.
+                    Key::Named(Named::Delete) => {
+                        return self.update(Message::Operator(Operator::ClearEntry));
+                    }
+                    Key::Named(Named::F9) => {
+                        return self.update(Message::Operator(Operator::Negate));
+                    }
+                    Key::Named(Named::Escape) => {
                         return self.update(Message::Operator(Operator::Clear));
                     }
                     _ => {}
@@ -685,7 +753,15 @@ impl Application for CosmicCalculator {
                 self.button_font_size = (size.height / 22.0).clamp(10.0, 48.0);
                 self.input_font_size = (size.height * 0.065).clamp(14.0, 32.0);
             }
-            Message::Toggle(mode) => self.mode = mode,
+            Message::SetMode(mode) => {
+                if let Some(config_handler) = &self.config_handler {
+                    if let Err(err) = self.config.set_mode(config_handler, mode) {
+                        tracing::error!("Failed to save mode: {}", err);
+                    }
+                } else {
+                    self.config.mode = mode;
+                }
+            }
         }
         Task::batch(tasks)
     }

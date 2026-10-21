@@ -5,7 +5,7 @@ use cosmic::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::app::{CosmicCalculator, operations::Calculator};
+use crate::app::{CosmicCalculator, Mode, operations::Calculator};
 
 pub const CONFIG_VERSION: u64 = 1;
 
@@ -13,6 +13,8 @@ pub const CONFIG_VERSION: u64 = 1;
 pub struct CalculatorConfig {
     pub app_theme: AppTheme,
     pub history: Vec<Calculator>,
+    /// Mode picked from the menu; `None` follows the window width.
+    pub mode: Option<Mode>,
 }
 
 impl CalculatorConfig {

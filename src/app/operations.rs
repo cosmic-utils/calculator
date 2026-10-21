@@ -106,9 +106,32 @@ impl Calculator {
             | Operator::Atan
             | Operator::Pi
             | Operator::E
-            | Operator::Reciprocal => self.add_operator(operator.clone()),
+            | Operator::Reciprocal
+            | Operator::Sinh
+            | Operator::Cosh
+            | Operator::Tanh
+            | Operator::Degree
+            | Operator::Square
+            | Operator::Cube
+            | Operator::PowerOfTen
+            | Operator::Exp
+            | Operator::Abs
+            | Operator::CubeRoot
+            | Operator::Sum
+            | Operator::Mean
+            | Operator::Median
+            | Operator::Mode
+            | Operator::Min
+            | Operator::Max
+            | Operator::StdDev
+            | Operator::StdDevPopulation
+            | Operator::Variance
+            | Operator::VariancePopulation
+            | Operator::Combinations
+            | Operator::Permutations => self.add_operator(operator.clone()),
 
             Operator::Clear => self.clear(),
+            Operator::ClearEntry => self.clear_entry(),
             Operator::Negate => self.toggle_sign(),
             Operator::Equal => return Some(Message::Evaluate),
             Operator::Backspace => {
@@ -117,31 +140,54 @@ impl Calculator {
         };
         None
     }
-    pub fn toggle_sign(&mut self) {
-        // Start index of the trailing number, if the expression ends with one.
-        let Some(num_start) = self
-            .expression
+
+    /// Start index of the trailing number, if the expression ends with one.
+    fn trailing_number_start(&self) -> Option<usize> {
+        // ',' is part of a number only as the decimal separator; otherwise it
+        // separates arguments, as in mean(1,2,3).
+        self.expression
             .char_indices()
             .rev()
-            .take_while(|(_, c)| c.is_ascii_digit() || *c == '.' || *c == ',')
+            .take_while(|(_, c)| {
+                c.is_ascii_digit() || *c == '.' || (*c == ',' && self.decimal_comma)
+            })
             .last()
             .map(|(i, _)| i)
-        else {
+    }
+
+    /// Whether the number starting at `num_start` is negated by a unary '-'.
+    fn has_unary_minus(&self, num_start: usize) -> bool {
+        let before = &self.expression[..num_start];
+        // A '-' is unary at the start or right after an operator, '(' or an
+        // argument separator.
+        before.ends_with('-')
+            && matches!(
+                before[..before.len() - 1].chars().next_back(),
+                None | Some('+' | '-' | '*' | '/' | '×' | '÷' | '%' | '^' | '(' | ';' | ',')
+            )
+    }
+
+    pub fn toggle_sign(&mut self) {
+        let Some(num_start) = self.trailing_number_start() else {
             return; // empty or not ending in a number: nothing to negate
         };
 
-        let before = &self.expression[..num_start];
-        // A '-' is unary at the start or right after an operator or '('.
-        let is_unary_minus = before.ends_with('-')
-            && matches!(
-                before[..before.len() - 1].chars().next_back(),
-                None | Some('+' | '-' | '*' | '/' | '×' | '÷' | '%' | '^' | '(')
-            );
-
-        if is_unary_minus {
+        if self.has_unary_minus(num_start) {
             self.expression.remove(num_start - 1);
         } else {
             self.expression.insert(num_start, '-');
+        }
+    }
+
+    /// Clears the number being typed and keeps the rest, like CE.
+    pub fn clear_entry(&mut self) {
+        if let Some(mut num_start) = self.trailing_number_start() {
+            if self.has_unary_minus(num_start) {
+                num_start -= 1;
+            }
+            self.expression.truncate(num_start);
+            // Exact chaining stays valid only while the result prefix is untouched.
+            self.chain_exact = self.chain_exact && self.expression.starts_with(&self.outcome);
         }
     }
 
@@ -176,6 +222,8 @@ impl Calculator {
                         | ')'
                         | '^'
                         | '√'
+                        | '⁻'
+                        | '°'
                         | '!'
                         | '\u{8}'
                 )
