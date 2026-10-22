@@ -2,6 +2,8 @@
 
 use std::any::TypeId;
 use std::collections::HashMap;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use crate::app::{config::CONFIG_VERSION, operations::Calculator, operator::Operator};
 use crate::core::{icons, key_binds::key_binds};
@@ -54,12 +56,9 @@ pub struct CosmicCalculator {
     previous: String,
     mode: Mode,
     graph: graph::Graph,
-    // Graph mode: the x typed by the user and the exact y evaluated at it.
-    graph_x: String,
-    graph_y: String,
-    graph_eval_id: u64,
-    // Incremented per request so results from a superseded evaluation are dropped.
-    eval_id: u64,
+    readout: graph::Readout,
+    // Incremented per request: a superseded one has its results dropped and its sampling killed.
+    eval_id: Arc<AtomicU64>,
 }
 
 #[derive(Debug, Clone)]
@@ -86,13 +85,7 @@ pub enum Message {
     SetDecimalComma(bool),
     Evaluate,
     Evaluated(u64, Result<operations::Evaluation, String>),
-    Plotted(u64, Result<graph::Plot, String>),
-    /// The graph view after a zoom or a pan: its x range and the y at its middle.
-    View(std::ops::RangeInclusive<f64>, f64),
-    Resample,
-    GraphX(String),
-    GraphEvaluate,
-    GraphEvaluated(u64, Result<operations::Evaluation, String>),
+    Graph(graph::Message),
     Window,
     Resized(cosmic::iced::Size),
     Toggle(Mode),
@@ -271,10 +264,8 @@ impl Application for CosmicCalculator {
             previous: String::new(),
             mode: Mode::Basic, // Defaults to basic mode
             graph: graph::Graph::new(),
-            graph_x: String::new(),
-            graph_y: String::new(),
-            graph_eval_id: 0,
-            eval_id: 0,
+            readout: graph::Readout::default(),
+            eval_id: Arc::default(),
         };
 
         let mut tasks = vec![];
@@ -499,31 +490,11 @@ impl Application for CosmicCalculator {
                             .padding(spacing.space_xxs)
                             .width(Length::Fill),
                     )
-                    .push_maybe((self.mode == Mode::Graph).then(|| {
-                        widget::row::with_capacity(3)
-                            .push(widget::text("x ="))
-                            .push(
-                                widget::text_input("", &self.graph_x)
-                                    .on_input(Message::GraphX)
-                                    .on_submit(|_| Message::GraphEvaluate)
-                                    .width(Length::Fixed(160.0)),
-                            )
-                            .push(widget::text(format!("y = {}", self.graph_y)))
-                            .spacing(spacing.space_xs)
-                            .align_y(Alignment::Center)
-                    }))
+                    .push_maybe((self.mode == Mode::Graph).then(|| self.readout_row()))
                     .spacing(2),
             )
             .push(match self.mode {
-                Mode::Graph => widget::column::with_capacity(2)
-                    .push(
-                        widget::canvas(&self.graph)
-                            .width(Length::Fill)
-                            .height(Length::Fill),
-                    )
-                    // The keypad carries the toaster in the other modes.
-                    .push(widget::toaster(&self.toasts, widget::space::horizontal()))
-                    .into(),
+                Mode::Graph => self.plot_area(),
                 _ => Element::from(keypad),
             })
             .align_x(Alignment::Center)
@@ -592,7 +563,7 @@ impl Application for CosmicCalculator {
                     self.previous.clear();
                     self.graph.reset();
                     // A plot still being sampled belongs to what was just cleared.
-                    self.eval_id += 1;
+                    self.next_request();
                 }
                 if let Some(operations::Message::Evaluate) =
                     self.calculator.on_operator_press(&operator)
@@ -609,8 +580,7 @@ impl Application for CosmicCalculator {
                     let expression = self.calculator.expression.clone();
                     tasks.push(self.plot(expression, true));
                 } else {
-                    self.eval_id += 1;
-                    let id = self.eval_id;
+                    let id = self.next_request();
                     let calculator = self.calculator.clone();
                     tasks.push(Task::perform(
                         operations::blocking(move || calculator.evaluate()),
@@ -619,7 +589,7 @@ impl Application for CosmicCalculator {
                 }
             }
             Message::Evaluated(id, evaluation) => {
-                if id != self.eval_id {
+                if id != self.eval_id.load(Ordering::Relaxed) {
                     return Task::batch(tasks);
                 }
                 let evaluation = match evaluation {
@@ -641,91 +611,7 @@ impl Application for CosmicCalculator {
 
                 self.calculator.expression = evaluation.outcome;
             }
-            Message::Plotted(id, plot) => {
-                if self.graph.pending == Some(id) {
-                    self.graph.pending = None;
-                }
-                if id != self.eval_id {
-                    return Task::batch(tasks);
-                }
-                match plot {
-                    Ok(plot) => {
-                        if plot.requested {
-                            let entry = Calculator::function(
-                                plot.expression.clone(),
-                                self.calculator.decimal_comma,
-                            );
-                            // Plotting the same function again does not repeat its entry.
-                            if self.config.history.last() != Some(&entry) {
-                                tasks.push(self.add_to_history(entry));
-                            }
-                        }
-                        // A new function takes the default view its samples were taken around.
-                        if plot.expression != self.graph.expression {
-                            self.graph.reset_view();
-                        }
-                        self.graph.expression = plot.expression;
-                        self.graph.sampled = plot.range;
-                        self.graph.values = plot.values;
-                        if !self.graph_x.trim().is_empty() {
-                            tasks.push(self.update(Message::GraphEvaluate));
-                        }
-                        // The view may have moved on while this was sampled.
-                        tasks.push(self.update(Message::Resample));
-                    }
-                    Err(error) => {
-                        tracing::error!("{}", error);
-                        tasks.push(self.update(Message::ShowToast(error)));
-                    }
-                }
-            }
-            Message::View(range, center) => {
-                self.graph.range = range;
-                self.graph.y_center = Some(center);
-                tasks.push(self.update(Message::Resample));
-            }
-            Message::GraphX(x) => self.graph_x = x,
-            Message::GraphEvaluate => {
-                let (expression, x) = (self.calculator.expression.trim(), self.graph_x.trim());
-                if expression.is_empty() || x.is_empty() {
-                    self.graph_y.clear();
-                    return Task::batch(tasks);
-                }
-                self.graph_eval_id += 1;
-                let id = self.graph_eval_id;
-                // Evaluate with full precision through the regular two-pass path.
-                let calculator = Calculator {
-                    expression: format!("({expression}) where x=({x})"),
-                    decimal_comma: self.calculator.decimal_comma,
-                    ..Calculator::new()
-                };
-                tasks.push(Task::perform(
-                    operations::blocking(move || calculator.evaluate()),
-                    move |evaluation| cosmic::Action::App(Message::GraphEvaluated(id, evaluation)),
-                ));
-            }
-            Message::GraphEvaluated(id, evaluation) => {
-                if id != self.graph_eval_id {
-                    return Task::batch(tasks);
-                }
-                match evaluation {
-                    Ok(evaluation) => self.graph_y = evaluation.outcome,
-                    Err(error) => {
-                        tracing::error!("{}", error);
-                        tasks.push(self.update(Message::ShowToast(error)));
-                    }
-                }
-            }
-            Message::Resample => {
-                // One request at a time: its result asks again if the view moved on meanwhile.
-                if !self.graph.values.is_empty()
-                    && self.graph.pending.is_none()
-                    && self.graph.is_stale()
-                {
-                    let expression = self.graph.expression.clone();
-                    tasks.push(self.plot(expression, false));
-                }
-            }
+            Message::Graph(message) => tasks.push(self.update_graph(message)),
             Message::Key(modifiers, key, text) => {
                 for (key_bind, action) in &self.key_binds {
                     if key_bind.matches(modifiers, &key, None) {
@@ -922,34 +808,9 @@ impl CosmicCalculator {
         cosmic::command::set_theme(self.config.app_theme.theme())
     }
 
-    // Samples a function around the visible range; stale results are dropped by eval_id.
-    fn plot(&mut self, expression: String, requested: bool) -> Task<Message> {
-        self.eval_id += 1;
-        let id = self.eval_id;
-        self.graph.pending = Some(id);
-        // A new function is sampled around the default view, the same one around its current view.
-        let view = if expression == self.graph.expression {
-            self.graph.range.clone()
-        } else {
-            graph::Graph::DEFAULT_RANGE
-        };
-        let calculator = self.calculator.clone();
-        let (range, samples) = (
-            graph::Graph::sampling_range(&view),
-            self.graph.sampling_count(),
-        );
-        Task::perform(
-            operations::blocking(move || {
-                let values = calculator.sample(&expression, &range, samples)?;
-                Ok(graph::Plot {
-                    expression,
-                    range,
-                    values,
-                    requested,
-                })
-            }),
-            move |plot| cosmic::Action::App(Message::Plotted(id, plot)),
-        )
+    // Starts a request, superseding whatever an older one is still running.
+    fn next_request(&self) -> u64 {
+        self.eval_id.fetch_add(1, Ordering::Relaxed) + 1
     }
 
     // Appends an entry to the sidebar and to the saved history.

@@ -2,7 +2,19 @@
 
 /// Translates LaTeX math into a qalc expression; the error is the text that could not be read.
 pub fn to_expression(latex: &str, decimal_comma: bool) -> Result<String, String> {
-    let tokens = tokens(latex)?;
+    let node = read(tokens(latex, false)?, decimal_comma)?;
+    let mut expression = String::new();
+    node.write(&mut expression, 0, decimal_comma);
+    Ok(expression)
+}
+
+/// Reads an expression as the field holds it, decimal commas included, into the tree it means.
+pub(crate) fn parse(text: &str, decimal_comma: bool) -> Result<Node, String> {
+    read(tokens(text, decimal_comma)?, false)
+}
+
+/// The tree of a whole formula; `decimal_comma` is how its numbers will be written back.
+fn read(tokens: Vec<Token>, decimal_comma: bool) -> Result<Node, String> {
     if tokens.len() > MAX_TOKENS {
         return Err("…".to_string());
     }
@@ -19,9 +31,7 @@ pub fn to_expression(latex: &str, decimal_comma: bool) -> Result<String, String>
     if let Some(token) = parser.peek() {
         return Err(describe(token));
     }
-    let mut expression = String::new();
-    node.write(&mut expression, 0, decimal_comma);
-    Ok(expression)
+    Ok(node)
 }
 
 /// Nesting and length beyond what any formula needs, refused so that a paste cannot exhaust the stack.
@@ -29,7 +39,7 @@ const MAX_DEPTH: usize = 50;
 const MAX_TOKENS: usize = 2_000;
 
 /// Names qalc gives to variables bound by `\sum` and `\int`: most single letters are units there.
-const BOUND: [&str; 3] = ["y", "z", "n"];
+const BOUND: [char; 3] = ['y', 'z', 'n'];
 
 /// Functions LaTeX writes as a command, which are also read without their backslash.
 const FUNCTIONS: [&str; 26] = [
@@ -84,6 +94,8 @@ fn qalc_function(name: &str) -> (String, Option<String>) {
 struct Lexer {
     chars: Vec<char>,
     pos: usize,
+    /// Reads a comma between digits as the decimal mark.
+    decimal_comma: bool,
 }
 
 impl Lexer {
@@ -108,12 +120,22 @@ impl Lexer {
     }
 
     fn number(&mut self) -> Result<Token, String> {
-        let mut dot = false;
-        let text = self.take_while(|c| {
-            let accepted = c.is_ascii_digit() || (c == '.' && !dot);
-            dot |= c == '.';
-            accepted
-        });
+        let mut text = String::new();
+        while let Some(c) = self.peek() {
+            let digit_follows = self
+                .chars
+                .get(self.pos + 1)
+                .is_some_and(|c| c.is_ascii_digit());
+            let mark = c == '.' || (c == ',' && self.decimal_comma && digit_follows);
+            if mark && !text.contains('.') {
+                text.push('.');
+            } else if c.is_ascii_digit() {
+                text.push(c);
+            } else {
+                break;
+            }
+            self.pos += 1;
+        }
         if text.contains(|c: char| c.is_ascii_digit()) {
             Ok(Token::Number(text))
         } else {
@@ -130,7 +152,7 @@ impl Lexer {
             return;
         }
         self.pos = after_word;
-        if is_function(&word) || matches!(word.as_str(), "sqrt" | "pi" | "tau") {
+        if is_function(&word) || matches!(word.as_str(), "sqrt" | "pi" | "tau" | "infinity") {
             tokens.push(Token::Command(word));
         } else if word.len() >= 2 && self.parenthesis_follows() {
             tokens.push(Token::Function(word));
@@ -178,6 +200,8 @@ impl Lexer {
             | "limits" | "nolimits" | "quad" | "qquad" => None,
             "lvert" => Some(Token::OpenBar),
             "rvert" => Some(Token::CloseBar),
+            // Under the name qalc gives it, which is also how the field reads it back.
+            "infty" => Some(Token::Command("infinity".to_string())),
             "operatorname" | "mathrm" => {
                 let word = self.braced_word().ok_or_else(|| format!("\\{name}"))?;
                 match word.chars().next() {
@@ -205,15 +229,17 @@ fn symbol(c: char, delimiter: Option<bool>) -> Result<Token, String> {
         '×' | '·' | '⋅' => Token::Symbol('*'),
         '÷' => Token::Symbol('/'),
         'π' => Token::Command("pi".to_string()),
+        '∞' => Token::Command("infinity".to_string()),
         '√' => Token::Command("sqrt".to_string()),
         _ => return Err(c.to_string()),
     })
 }
 
-fn tokens(text: &str) -> Result<Vec<Token>, String> {
+fn tokens(text: &str, decimal_comma: bool) -> Result<Vec<Token>, String> {
     let mut lexer = Lexer {
         chars: text.chars().collect(),
         pos: 0,
+        decimal_comma,
     };
     let mut tokens = Vec::new();
     // Set by `\left` and `\right` for the delimiter that follows.
@@ -252,7 +278,7 @@ fn tokens(text: &str) -> Result<Vec<Token>, String> {
 }
 
 #[derive(Debug, Clone, Copy)]
-enum Op {
+pub(crate) enum Op {
     Add,
     Subtract,
     Multiply,
@@ -261,7 +287,7 @@ enum Op {
 }
 
 #[derive(Debug)]
-enum Node {
+pub(crate) enum Node {
     Number(String),
     Variable(String),
     Negate(Box<Node>),
@@ -373,7 +399,7 @@ struct Parser {
     pos: usize,
     decimal_comma: bool,
     /// Variables bound by `\sum` and `\int`, with the name qalc gets for them.
-    scopes: Vec<(char, &'static str)>,
+    scopes: Vec<(char, char)>,
     /// Plain `|` currently open, to tell a closing one from an opening one.
     bars: usize,
     /// Integrals being read: their body ends at the differential.
@@ -443,6 +469,7 @@ impl Parser {
                             | "sqrt"
                             | "pi"
                             | "tau"
+                            | "infinity"
                             | "sum"
                             | "prod"
                             | "int"
@@ -462,7 +489,7 @@ impl Parser {
             Token::Number(_) | Token::Name(_) => true,
             Token::Command(name) => matches!(
                 name.as_str(),
-                "frac" | "dfrac" | "tfrac" | "binom" | "sqrt" | "pi" | "tau"
+                "frac" | "dfrac" | "tfrac" | "binom" | "sqrt" | "pi" | "tau" | "infinity"
             ),
             _ => false,
         };
@@ -671,7 +698,7 @@ impl Parser {
                     None => Node::call("sqrt", vec![radicand]),
                 })
             }
-            "pi" | "tau" => Ok(Node::Variable(name.to_string())),
+            "pi" | "tau" | "infinity" => Ok(Node::Variable(name.to_string())),
             "lfloor" | "lceil" => {
                 let (close, function) = if name == "lfloor" {
                     ("rfloor", "floor")
@@ -726,10 +753,14 @@ impl Parser {
     }
 
     /// A name qalc can use for a bound variable, in scope until the operator is done.
-    fn bind(&mut self, variable: char, command: &str) -> Result<&'static str, String> {
+    fn bind(&mut self, variable: char, command: &str) -> Result<char, String> {
+        // A letter the formula writes stays free: `\sum_{k=1}^{3} ky` keeps its own `y`.
         let name = BOUND
             .into_iter()
-            .find(|name| self.scopes.iter().all(|(_, used)| used != name))
+            .find(|name| {
+                !self.tokens.contains(&Token::Name(*name))
+                    && self.scopes.iter().all(|(_, used)| used != name)
+            })
             .ok_or_else(|| command.to_string())?;
         self.scopes.push((variable, name));
         Ok(name)
@@ -876,6 +907,18 @@ mod tests {
                 r"\int_0^x\int_0^t 1\,ds\,dt",
                 "integrate(integrate(1, 0, y, z), 0, x, y)",
             ),
+            (
+                r"\int_0^\infty e^{-xt}\,dt",
+                "integrate(e^(-x*y), 0, infinity, y)",
+            ),
+            (
+                r"\int_{-\infty}^{+\infty} e^{-t^2}\,dt",
+                "integrate(e^(-y^2), -infinity, infinity, y)",
+            ),
+            (
+                r"\sum_{k=1}^{\infty}\frac{1}{k^2}",
+                "sum(1/y^2, 1, infinity, y)",
+            ),
         ];
         for (latex, expected) in cases {
             assert_eq!(read(latex), expected, "{latex}");
@@ -890,6 +933,10 @@ mod tests {
         assert_eq!(read("√(1−x²)·|x|"), "sqrt(1-x^2)*abs(x)");
         assert_eq!(read(r"\left(x+1\right)^{2}"), "(x+1)^2");
         assert_eq!(read(r"$\frac{1}{2}$"), "1/2");
+        assert_eq!(
+            read(r"\int_0^∞ e^{-t}\,dt"),
+            "integrate(e^(-y), 0, infinity, y)"
+        );
     }
 
     #[test]
@@ -902,11 +949,24 @@ mod tests {
     }
 
     #[test]
+    fn bound_variables_never_take_a_letter_the_formula_writes() {
+        assert_eq!(read(r"\sum_{k=1}^{3} ky"), "sum(z*y, 1, 3, z)");
+        assert_eq!(read(r"\sum_{k=1}^{y} k"), "sum(z, 1, y, z)");
+        assert_eq!(read(r"\int_0^y y\,dy"), "integrate(z, 0, y, z)");
+        assert_eq!(
+            read(r"\sum_{k=1}^{2}\sum_{j=1}^{2} kjz"),
+            "sum(sum(y*n*z, 1, 2, n), 1, 2, y)"
+        );
+        // With all three letters written, no name is left for the sum.
+        assert_eq!(refused(r"\sum_{k=1}^{2} kyzn"), r"\sum");
+    }
+
+    #[test]
     fn names_what_it_cannot_read() {
         assert_eq!(refused(r"\begin{cases}x\end{cases}"), r"\begin");
         assert_eq!(refused(r"\alpha x"), r"\alpha");
         assert_eq!(refused(r"x \le 2"), r"\le");
-        assert_eq!(refused(r"\int_0^\infty e^{-t}dt"), r"\infty");
+        assert_eq!(refused(r"\lim_{x\to 0}\frac{\sin x}{x}"), r"\lim");
         assert_eq!(refused("x_1"), "_");
         assert_eq!(refused("2@x"), "@");
         // A derivative would otherwise read as the fraction d/(d·x).
